@@ -1116,7 +1116,7 @@ class Main {
 		return Path.addTrailingSlash( getHomePath() ) + ".haxelib";
 	}
 
-	function getGlobalRepositoryPath(create = false):String {
+	static public function getGlobalRepositoryPath(create = false):String {
 		// first check the env var
 		var rep = Sys.getEnv("HAXELIB_PATH");
 		if (rep != null)
@@ -1144,7 +1144,7 @@ class Main {
 
 	// The Windows haxe installer will setup %HAXEPATH%. We will default haxelib repo to %HAXEPATH%/lib.
 	// When there is no %HAXEPATH%, we will use a "haxelib" directory next to the config file, ".haxelib".
-	function getWindowsDefaultGlobalRepositoryPath():String {
+	static function getWindowsDefaultGlobalRepositoryPath():String {
 		var haxepath = Sys.getEnv("HAXEPATH");
 		if (haxepath != null)
 			return Path.addTrailingSlash(haxepath.trim()) + REPNAME;
@@ -1152,7 +1152,7 @@ class Main {
 			return Path.join([Path.directory(getConfigFile()), "haxelib"]);
 	}
 
-	function getSuggestedGlobalRepositoryPath():String {
+	public static function getSuggestedGlobalRepositoryPath():String {
 		if (IS_WINDOWS)
 			return getWindowsDefaultGlobalRepositoryPath();
 
@@ -1166,15 +1166,20 @@ class Main {
 
 	function getRepository():String {
 		if (!settings.global)
-			return switch getLocalRepository() {
-				case null: getGlobalRepository();
-				case repo: Path.addTrailingSlash(FileSystem.fullPath(repo));
-			}
+			return findRepository();
 		else
 			return getGlobalRepository();
 	}
 
-	function getLocalRepository():Null<String> {
+	/** Get the repository path to the local one if it exists, otherwise get global repo. **/
+	public static function findRepository() {
+		return switch getLocalRepository() {
+			case null: getGlobalRepository();
+			case repo: Path.addTrailingSlash(FileSystem.fullPath(repo));
+		}
+	}
+
+	static function getLocalRepository():Null<String> {
 		var dir = Path.removeTrailingSlashes(Sys.getCwd());
 		while (dir != null) {
 			var repo = Path.addTrailingSlash(dir) + REPODIR;
@@ -1187,7 +1192,7 @@ class Main {
 		return null;
 	}
 
-	function getGlobalRepository():String {
+	static function getGlobalRepository():String {
 		var rep = getGlobalRepositoryPath(true);
 		if (!FileSystem.exists(rep))
 			throw "haxelib Repository " + rep + " does not exist. Please run `haxelib setup` again.";
@@ -1196,10 +1201,19 @@ class Main {
 		return Path.addTrailingSlash(rep);
 	}
 
+	/** Set the global haxelib repository to `path` in the haxelib config file **/
+	public static function saveSetup(path:String):Void {
+		var configFile = getConfigFile();
+
+		if (isSamePath(path, configFile))
+			throw "Can't use " + path + " because it is reserved for config file";
+
+		safeDir(path);
+		File.saveContent(configFile, path);
+	}
+
 	function setup() {
 		var rep = try getGlobalRepositoryPath() catch (_:Dynamic) null;
-
-		var configFile = getConfigFile();
 
 		if (args.length <= argcur) {
 			if (rep == null)
@@ -1223,14 +1237,9 @@ class Main {
 			rep = line;
 		}
 
-
 		rep = try absolutePath(rep) catch (e:Dynamic) rep;
 
-		if (isSamePath(rep, configFile))
-			throw "Can't use "+rep+" because it is reserved for config file";
-
-		safeDir(rep);
-		File.saveContent(configFile, rep);
+		saveSetup(rep);
 
 		print("haxelib repository is now " + rep);
 	}
