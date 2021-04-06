@@ -8,6 +8,8 @@ import haxelib.client.FsUtils.*;
 
 using StringTools;
 
+class RepoException extends haxe.Exception {}
+
 /** Manages the haxelib database **/
 class RepoManager {
 	static var REPNAME = "lib";
@@ -106,22 +108,20 @@ class RepoManager {
 			return Path.join([Path.directory(getConfigFile()), "haxelib"]);
 	}
 
-	public static function newRepo() {
+	public static function newRepo():String {
 		var path = absolutePath(REPODIR);
 		var created = FsUtils.safeDir(path, true);
-		if (created)
-			Main.print('Local repository created ($path)');
-		else
-			Main.print('Local repository already exists ($path)');
+		if(!created)
+			throw new RepoException('Local repository already exists ($path)');
+		return path;
 	}
 
-	public static function deleteRepo() {
+	public static function deleteRepo():String {
 		var path = absolutePath(REPODIR);
 		var deleted = FsUtils.deleteRec(path);
-		if (deleted)
-			Main.print('Local repository deleted ($path)');
-		else
-			Main.print('No local repository found ($path)');
+		if (!deleted)
+			throw new RepoException('No local repository found ($path)');
+		return path;
 	}
 
 }

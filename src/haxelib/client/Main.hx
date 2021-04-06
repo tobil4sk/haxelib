@@ -21,6 +21,7 @@
  */
 package haxelib.client;
 
+import haxelib.client.RepoManager.RepoException;
 import haxelib.client.Util.*;
 import haxe.crypto.Md5;
 import haxe.*;
@@ -1665,11 +1666,19 @@ class Main {
 	}
 
 	function newRepo() {
-		RepoManager.newRepo();
+		try {
+			var path = RepoManager.newRepo();
+			print('Local repository created ($path)');
+		} catch(e:RepoException)
+			print(e.message);
 	}
 
 	function deleteRepo() {
-		RepoManager.deleteRepo();
+		try {
+			var path = RepoManager.deleteRepo();
+			print('Local repository deleted ($path)');
+		} catch(e:RepoException)
+			print(e.message);
 	}
 
 	// ----------------------------------
