@@ -1138,7 +1138,7 @@ class Main {
 			rep = line;
 		}
 
-		rep = try absolutePath(rep) catch (e:Dynamic) rep;
+		rep = try FileSystem.absolutePath(rep) catch (e:Dynamic) rep;
 
 		RepoManager.saveSetup(rep);
 

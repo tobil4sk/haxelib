@@ -158,12 +158,4 @@ class FsUtils {
 		return home;
 	}
 
-	// haxe 3.1.3 doesn't have FileSystem.absolutePath()
-	public static function absolutePath(path:String) {
-		if (StringTools.startsWith(path, '/') || path.charAt(1) == ':' || StringTools.startsWith(path, '\\\\')) {
-			return path;
-		}
-		return haxe.io.Path.join([Sys.getCwd(), path]);
-	}
-
 }
