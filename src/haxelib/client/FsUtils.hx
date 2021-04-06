@@ -26,15 +26,13 @@ import sys.FileSystem;
 using StringTools;
 
 class FsUtils {
-    static var IS_WINDOWS = (Sys.systemName() == "Windows");
-
     /**
       recursively follow symlink
       TODO: this method does not (yet) work on Windows
     */
     public static function realPath(path:String):String {
-        var proc = new sys.io.Process('readlink', [path.endsWith("\n") ? path.substr(0, path.length-1) : path]);
-        var ret = switch (proc.stdout.readAll().toString()) {
+        final proc = new sys.io.Process('readlink', [path.endsWith("\n") ? path.substr(0, path.length-1) : path]);
+    	final ret = switch (proc.stdout.readAll().toString()) {
             case "": //it is not a symlink
                 path;
             case targetPath:
@@ -51,7 +49,7 @@ class FsUtils {
     public static function isSamePath(a:String, b:String):Bool {
         a = Path.normalize(a);
         b = Path.normalize(b);
-        if (IS_WINDOWS) { // paths are case-insensitive on Windows
+        if (Main.IS_WINDOWS) { // paths are case-insensitive on Windows
             a = a.toLowerCase();
             b = b.toLowerCase();
         }
@@ -69,7 +67,7 @@ class FsUtils {
                 }
             }
             if (checkWritable) {
-                var checkFile = dir+"/haxelib_writecheck.txt";
+                final checkFile = dir+"/haxelib_writecheck.txt";
                 try {
                     sys.io.File.saveContent(checkFile, "This is a temporary file created by Haxelib to check if directory is writable. You can safely delete it!");
                 } catch (_:Dynamic) {
@@ -92,12 +90,12 @@ class FsUtils {
         if (!FileSystem.exists(dir))
             return false;
         for (p in FileSystem.readDirectory(dir)) {
-            var path = Path.join([dir, p]);
+            final path = Path.join([dir, p]);
 
             if (isBrokenSymlink(path)) {
                 safeDelete(path);
             } else if (FileSystem.isDirectory(path)) {
-                if (!IS_WINDOWS) {
+                if (!Main.IS_WINDOWS) {
                     // try to delete it as a file first - in case of path
                     // being a symlink, it will success
                     if (!safeDelete(path))
@@ -118,7 +116,7 @@ class FsUtils {
             FileSystem.deleteFile(file);
             return true;
         } catch (e:Dynamic) {
-            if (IS_WINDOWS) {
+            if (Main.IS_WINDOWS) {
                 try {
                     Sys.command("attrib", ["-R", file]);
                     FileSystem.deleteFile(file);
@@ -140,11 +138,11 @@ class FsUtils {
 
 	public static function getHomePath():String {
 		var home:String = null;
-		if (IS_WINDOWS) {
+		if (Main.IS_WINDOWS) {
 			home = Sys.getEnv("USERPROFILE");
 			if (home == null) {
-				var drive = Sys.getEnv("HOMEDRIVE");
-				var path = Sys.getEnv("HOMEPATH");
+				final drive = Sys.getEnv("HOMEDRIVE");
+				final path = Sys.getEnv("HOMEPATH");
 				if (drive != null && path != null)
 					home = drive + path;
 			}
