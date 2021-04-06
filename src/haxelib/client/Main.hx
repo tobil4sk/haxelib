@@ -153,11 +153,13 @@ class ProgressIn extends haxe.io.Input {
 }
 
 class Main {
-	static inline var HAXELIB_LIBNAME = "haxelib";
+	public static final IS_WINDOWS = (Sys.systemName() == "Windows");
 
-	static var VERSION:SemVer = SemVer.ofString(getHaxelibVersion());
-	static var VERSION_LONG:String = getHaxelibVersionLong();
-	static var SERVER = {
+	static final HAXELIB_LIBNAME = "haxelib";
+
+	static final VERSION:SemVer = SemVer.ofString(getHaxelibVersion());
+	static final VERSION_LONG:String = getHaxelibVersionLong();
+	static final SERVER = {
 		protocol : "https",
 		host : "lib.haxe.org",
 		port : 443,
@@ -166,14 +168,14 @@ class Main {
 		apiVersion : "3.0",
 		noSsl : false
 	};
-	public static var IS_WINDOWS = (Sys.systemName() == "Windows");
+
+	final commands:List<{ name : String, doc : String, f : Void -> Void, net : Bool, cat : CommandCategory }>;
+	final isHaxelibRun:Bool;
 
 	var argcur : Int;
 	var args : Array<String>;
-	var commands : List<{ name : String, doc : String, f : Void -> Void, net : Bool, cat : CommandCategory }>;
 	var siteUrl : String;
 	var site : SiteProxy;
-	var isHaxelibRun : Bool;
 	var alreadyUpdatedVcsDependencies:Map<String,String> = new Map<String,String>();
 
 	function new() {
