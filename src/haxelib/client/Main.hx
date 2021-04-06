@@ -67,13 +67,14 @@ class SiteProxy extends haxe.remoting.Proxy<haxelib.SiteApi> {
 
 class ProgressOut extends haxe.io.Output {
 
-	var o : haxe.io.Output;
+	final o : haxe.io.Output;
+	final startSize : Int;
+	final start : Float;
+
 	var cur : Int;
 	var curReadable : Float;
-	var startSize : Int;
 	var max : Null<Int>;
 	var maxReadable : Null<Float>;
-	var start : Float;
 
 	public function new(o, currentSize) {
 		this.o = o;
@@ -85,7 +86,7 @@ class ProgressOut extends haxe.io.Output {
 	function report(n) {
 		cur += n;
 
-		var tag : String = ((max != null ? max : cur) / 1000000) > 1 ? "MB" : "KB";
+		final tag : String = ((max != null ? max : cur) / 1000000) > 1 ? "MB" : "KB";
 
 		curReadable = tag == "MB" ? cur / 1000000 : cur / 1000;
 		curReadable = Math.round( curReadable * 100 ) / 100; // 12.34 precision.
@@ -106,7 +107,7 @@ class ProgressOut extends haxe.io.Output {
 	}
 
 	public override function writeBytes(s,p,l) {
-		var r = o.writeBytes(s,p,l);
+		final r = o.writeBytes(s,p,l);
 		report(r);
 		return r;
 	}
@@ -116,12 +117,12 @@ class ProgressOut extends haxe.io.Output {
 		o.close();
 
 		var time = Timer.stamp() - start;
-		var downloadedBytes = cur - startSize;
+		final downloadedBytes = cur - startSize;
 		var speed = (downloadedBytes / time) / 1000;
 		time = Std.int(time * 10) / 10;
 		speed = Std.int(speed * 10) / 10;
 
-		var tag : String = (downloadedBytes / 1000000) > 1 ? "MB" : "KB";
+		final tag : String = (downloadedBytes / 1000000) > 1 ? "MB" : "KB";
 		var readableBytes : Float = (tag == "MB") ? downloadedBytes / 1000000 : downloadedBytes / 1000;
 		readableBytes = Math.round( readableBytes * 100 ) / 100; // 12.34 precision.
 
@@ -136,9 +137,10 @@ class ProgressOut extends haxe.io.Output {
 
 class ProgressIn extends haxe.io.Input {
 
-	var i : haxe.io.Input;
+	final i : haxe.io.Input;
+	final tot : Int;
+
 	var pos : Int;
-	var tot : Int;
 
 	public function new( i, tot ) {
 		this.i = i;
@@ -147,13 +149,13 @@ class ProgressIn extends haxe.io.Input {
 	}
 
 	public override function readByte() {
-		var c = i.readByte();
+		final c = i.readByte();
 		report(1);
 		return c;
 	}
 
 	public override function readBytes(buf,pos,len) {
-		var k = i.readBytes(buf,pos,len);
+		final k = i.readBytes(buf,pos,len);
 		report(k);
 		return k;
 	}
@@ -298,7 +300,7 @@ class Main {
 
 		while (numTries-- > 0) {
 			try {
-				var result = func();
+				final result = func();
 
 				if (hasRetried) Cli.print("retry sucessful");
 
@@ -536,14 +538,14 @@ class Main {
 	}
 
 	function zipDirectory(root:String):List<Entry> {
-		var ret = new List<Entry>();
+		final ret = new List<Entry>();
 		function seek(dir:String) {
 			for (name in FileSystem.readDirectory(dir)) if (!name.startsWith('.')) {
-				var full = '$dir/$name';
+				final full = '$dir/$name';
 				if (FileSystem.isDirectory(full)) seek(full);
 				else {
-					var blob = File.getBytes(full);
-					var entry:Entry = {
+					final blob = File.getBytes(full);
+					final entry:Entry = {
 						fileName: full.substr(root.length+1),
 						fileSize : blob.length,
 						fileTime : FileSystem.stat(full).mtime,
@@ -564,10 +566,10 @@ class Main {
 	function submit() {
 		final file = getArgument("Package");
 
-		var data, zip;
+		var data:haxe.io.Bytes, zip:List<Entry>;
 		if (FileSystem.isDirectory(file)) {
 			zip = zipDirectory(file);
-			var out = new BytesOutput();
+			final out = new BytesOutput();
 			new Writer(out).write(zip);
 			data = out.getBytes();
 		} else {
@@ -575,7 +577,7 @@ class Main {
 			zip = Reader.readZip(new haxe.io.BytesInput(data));
 		}
 
-		var infos = Data.readInfos(zip,true);
+		final infos = Data.readInfos(zip,true);
 		Data.checkClassPath(zip, infos);
 
 		var user:String = infos.contributors[0];
@@ -586,19 +588,19 @@ class Main {
 				user = getArgument("User");
 			} while ( infos.contributors.indexOf(user) == -1 );
 
-		var password;
-		if( retry(site.isNewUser.bind(user)) ) {
+		final password = if( retry(site.isNewUser.bind(user)) ) {
 			Cli.print('This is your first submission as \'$user\'');
 			Cli.print("Please enter the following information for registration");
-			password = doRegister(user);
+			doRegister(user);
 		} else {
-			password = readPassword(user);
+			readPassword(user);
 		}
+
 		retry(site.checkDeveloper.bind(infos.name,user));
 
 		// check dependencies validity
 		for( d in infos.dependencies ) {
-			var infos = retry(site.infos.bind(d.name));
+			final infos = retry(site.infos.bind(d.name));
 			if( d.version == "" )
 				continue;
 			var found = false;
@@ -613,21 +615,21 @@ class Main {
 
 		// check if this version already exists
 
-		var sinfos = try retry(site.infos.bind(infos.name)) catch( _ : Dynamic ) null;
+		final sinfos = try retry(site.infos.bind(infos.name)) catch( _ : Dynamic ) null;
 		if( sinfos != null )
 			for( v in sinfos.versions )
 				if( v.name == infos.version && !Cli.ask('You\'re about to overwrite existing version \'${v.name}\', please confirm') )
 					throw "Aborted";
 
 		// query a submit id that will identify the file
-		var id = retry(site.getSubmitId.bind());
+		final id = retry(site.getSubmitId.bind());
 
 		// directly send the file data over Http
-		var h = createHttpRequest(server.protocol+"://"+server.host+":"+server.port+"/"+server.url);
+		final h = createHttpRequest(server.protocol+"://"+server.host+":"+server.port+"/"+server.url);
 		h.onError = function(e) throw e;
 		h.onData = Cli.print;
 
-		var inp = if ( settings.quiet == false )
+		final inp = if ( settings.quiet == false )
 			new ProgressIn(new haxe.io.BytesInput(data),data.length);
 		else
 			new haxe.io.BytesInput(data);
@@ -641,7 +643,7 @@ class Main {
 		if (haxe.remoting.HttpConnection.TIMEOUT != 0) // don't ignore -notimeout
 			haxe.remoting.HttpConnection.TIMEOUT = 1000;
 		// ask the server to register the sent file
-		var msg = retry(site.processSubmit.bind(id,user,password));
+		final msg = retry(site.processSubmit.bind(id,user,password));
 		Cli.print(msg);
 	}
 
@@ -694,7 +696,7 @@ class Main {
 	function getVersion( inf:ProjectInfos, ?reqversion:String ) {
 		if( inf.versions.length == 0 )
 			throw 'The library ${inf.name} has not yet released a version';
-		var version = if( reqversion != null ) reqversion else inf.getLatest();
+		final version = if ( reqversion != null ) reqversion else inf.getLatest();
 		var found = false;
 		for( v in inf.versions )
 			if( v.name == version ) {
@@ -708,32 +710,33 @@ class Main {
 	}
 
 	function installFromHxml( rep:String, path:String ) {
-		var targets  = [
+		final targets  = [
 			'-java ' => 'hxjava',
 			'-cpp ' => 'hxcpp',
 			'-cs ' => 'hxcs',
 		];
-		var libsToInstall = new Map<String, {name:String,version:String,type:String,url:String,branch:String,subDir:String}>();
+		final libsToInstall = new Map<String, {name:String,version:String,type:String,url:String,branch:String,subDir:String}>();
 
 		function processHxml(path) {
-			var hxml = normalizeHxml(sys.io.File.getContent(path));
-			var lines = hxml.split("\n");
+			final hxml = normalizeHxml(sys.io.File.getContent(path));
+			final lines = hxml.split("\n");
 			for (l in lines) {
 				l = l.trim();
 
 				for (target in targets.keys())
 					if (l.startsWith(target)) {
-						var lib = targets[target];
+						final lib = targets[target];
 						if (!libsToInstall.exists(lib))
 							libsToInstall[lib] = { name: lib, version: null, type:"haxelib", url: null, branch: null, subDir: null }
 					}
 
-				var libraryFlagEReg = ~/^(-lib|-L|--library)\b/;
+				final libraryFlagEReg = ~/^(-lib|-L|--library)\b/;
 				if (libraryFlagEReg.match(l))
 				{
-					var key = libraryFlagEReg.matchedRight().trim();
-					var parts = ~/:/.split(key);
-					var libName = parts[0];
+					final key = libraryFlagEReg.matchedRight().trim();
+					final parts = ~/:/.split(key);
+					final libName = parts[0];
+
 					var libVersion:String = null;
 					var branch:String = null;
 					var url:String = null;
@@ -746,7 +749,7 @@ class Main {
 						{
 
 							type = "git";
-							var urlParts = parts[1].substr(4).split("#");
+							final urlParts = parts[1].substr(4).split("#");
 							url = urlParts[0];
 							branch = urlParts.length > 1 ? urlParts[1] : null;
 						}
@@ -787,14 +790,14 @@ class Main {
 				// Do not check git repository infos
 				continue;
 			}
-			var inf = retry(site.infos.bind(l.name));
+			final inf = retry(site.infos.bind(l.name));
 			l.version = getVersion(inf, l.version);
 		}
 
 		// Print a list with all the info
 		Cli.print("Haxelib is going to install these libraries:");
 		for (l in libsToInstall) {
-			var vString = (l.version == null) ? "" : " - " + l.version;
+			final vString = (l.version == null) ? "" : " - " + l.version;
 			Cli.print("  " + l.name + vString);
 		}
 
@@ -816,8 +819,8 @@ class Main {
 	}
 
 	function installFromAllHxml(rep:String) {
-		var cwd = Sys.getCwd();
-		var hxmlFiles = sys.FileSystem.readDirectory(cwd).filter(function (f) return f.endsWith(".hxml"));
+		final cwd = Sys.getCwd();
+		final hxmlFiles = sys.FileSystem.readDirectory(cwd).filter(function (f) return f.endsWith(".hxml"));
 		if (hxmlFiles.length > 0) {
 			for (file in hxmlFiles) {
 				Cli.print('Installing all libraries from $file:');
@@ -837,16 +840,16 @@ class Main {
 
 	// maxRedirect set to 20, which is most browsers' default value according to https://stackoverflow.com/a/36041063/267998
 	function download(fileUrl:String, outPath:String, maxRedirect = 20):Void {
-		var out = try File.append(outPath,true) catch (e:Dynamic) throw 'Failed to write to $outPath: $e';
+		final out = try File.append(outPath,true) catch (e:Dynamic) throw 'Failed to write to $outPath: $e';
 		out.seek(0, SeekEnd);
 
-		var h = createHttpRequest(fileUrl);
+		final h = createHttpRequest(fileUrl);
 
-		var currentSize = out.tell();
+		final currentSize = out.tell();
 		if (currentSize > 0)
 			h.addHeader("range", "bytes="+currentSize + "-");
 
-		var progress = if (settings != null && settings.quiet == false )
+		final progress = if (settings != null && settings.quiet == false )
 			new ProgressOut(out, currentSize);
 		else
 			out;
@@ -926,8 +929,8 @@ class Main {
 
 	function doInstallFile(rep,filepath,setcurrent,nodelete = false) {
 		// read zip content
-		var f = File.read(filepath,true);
-		var zip = try {
+		final f = File.read(filepath,true);
+		final zip = try {
 			Reader.readZip(f);
 		} catch (e:Dynamic) {
 			f.close();
@@ -937,38 +940,40 @@ class Main {
 			rethrow(e);
 		}
 		f.close();
-		var infos = Data.readInfos(zip,false);
+		final infos = Data.readInfos(zip,false);
 		Cli.print('Installing ${infos.name}...');
 		// create directories
-		var pdir = rep + Data.safe(infos.name);
+		final pdir = rep + Data.safe(infos.name);
 		safeDir(pdir);
 		pdir += "/";
-		var target = pdir + Data.safe(infos.version);
+		final target = pdir + Data.safe(infos.version);
 		safeDir(target);
 		target += "/";
 
 		// locate haxelib.json base path
-		var basepath = Data.locateBasePath(zip);
+		final basepath = Data.locateBasePath(zip);
 
 		// unzip content
-		var entries = [for (entry in zip) if (entry.fileName.startsWith(basepath)) entry];
-		var total = entries.length;
+		final entries = [for (entry in zip) if (entry.fileName.startsWith(basepath)) entry];
+		final total = entries.length;
 		for (i in 0...total) {
-			var zipfile = entries[i];
-			var n = zipfile.fileName;
-			// remove basepath
-			n = n.substr(basepath.length,n.length-basepath.length);
+			final zipfile = entries[i];
+			final n = {
+				final tmp = zipfile.fileName;
+				// remove basepath
+				tmp.substr(basepath.length, tmp.length - basepath.length);
+			}
 			if( n.charAt(0) == "/" || n.charAt(0) == "\\" || n.split("..").length > 1 )
 				throw "Invalid filename : "+n;
 
 			if (settings.debug) {
-				var percent = Std.int((i / total) * 100);
+				final percent = Std.int((i / total) * 100);
 				Sys.print('${i + 1}/$total ($percent%)\r');
 			}
 
-			var dirs = ~/[\/\\]/g.split(n);
-			var path = "";
-			var file = dirs.pop();
+			final dirs = ~/[\/\\]/g.split(n);
+			final path = "";
+			final file = dirs.pop();
 			for( d in dirs ) {
 				path += d;
 				safeDir(target+path);
@@ -981,7 +986,7 @@ class Main {
 			path += file;
 			if (settings.debug)
 				Cli.print('  Install $path');
-			var data = Reader.unzip(zipfile);
+			final data = Reader.unzip(zipfile);
 			File.saveBytes(target+path,data);
 		}
 
@@ -1007,8 +1012,8 @@ class Main {
 
 		for( d in dependencies ) {
 			if( d.version == "" ) {
-				var pdir = rep + Data.safe(d.name);
-				var dev = try getDev(pdir) catch (_:Dynamic) null;
+				final pdir = rep + Data.safe(d.name);
+				final dev = try getDev(pdir) catch (_:Dynamic) null;
 
 				if (dev != null) { // no version specified and dev set, no need to install dependency
 					continue;
@@ -1021,7 +1026,7 @@ class Main {
 
 			switch d.type {
 				case Haxelib:
-					var info = retry(site.infos.bind(d.name));
+					final info = retry(site.infos.bind(d.name));
 					doInstall(rep, info.name, d.version, false);
 				case Git:
 					useVcs(VcsID.Git, function(vcs) doVcsInstall(rep, vcs, d.name, d.url, d.branch, d.subDir, d.version));
@@ -1046,7 +1051,7 @@ class Main {
 
 		var line = getArgument(prompt);
 		if (line != "") {
-			var splitLine = line.split("/");
+			final splitLine = line.split("/");
 			if(splitLine[0] == "~") {
 				var home = getHomePath();
 
@@ -1077,36 +1082,40 @@ class Main {
 	static function getDev( dir ) {
 		var path = File.getContent(dir + "/.dev").trim();
 		path = ~/%([A-Za-z0-9_]+)%/g.map(path,function(r) {
-			var env = Sys.getEnv(r.matched(1));
+			final env = Sys.getEnv(r.matched(1));
 			return env == null ? "" : env;
 		});
-		var filters = try Sys.getEnv("HAXELIB_DEV_FILTER").split(";") catch( e : Dynamic ) null;
+		final filters = try Sys.getEnv("HAXELIB_DEV_FILTER").split(";") catch( e : Dynamic ) null;
 		if( filters != null && !filters.exists(function(flt) return StringTools.startsWith(path.toLowerCase().split("\\").join("/"),flt.toLowerCase().split("\\").join("/"))) )
 			throw "This .dev is filtered";
 		return path;
 	}
 
 	function list() {
-		var rep = getRepository();
-		var folders = FileSystem.readDirectory(rep);
-		var filter = argsIterator.next();
-		if ( filter != null )
-			folders = folders.filter( function (f) return f.toLowerCase().indexOf(filter.toLowerCase()) > -1 );
-		var all = [];
+		final rep = getRepository();
+		final folders = {
+			final folders = FileSystem.readDirectory(rep);
+			final filter = argsIterator.next();
+			if ( filter != null )
+				folders.filter( function (f) return f.toLowerCase().indexOf(filter.toLowerCase()) > -1 );
+			else
+				folders;
+		}
+		final all = [];
 		for( p in folders ) {
 			if( p.charAt(0) == "." )
 				continue;
 
-			var current = try getCurrent("", rep + p) catch(e:Dynamic) continue;
-			var dev = try getDev(rep + p) catch( e : Dynamic ) null;
+			final current = try getCurrent("", rep + p) catch(e:Dynamic) continue;
+			final dev = try getDev(rep + p) catch( e : Dynamic ) null;
 
-			var semvers = [];
-			var others = [];
+			final semvers = [];
+			final others = [];
 			for( v in FileSystem.readDirectory(rep+p) ) {
 				if( v.charAt(0) == "." )
 					continue;
 				v = Data.unsafe(v);
-				var semver = try SemVer.ofString(v) catch (_:Dynamic) null;
+				final semver = try SemVer.ofString(v) catch (_:Dynamic) null;
 				if (semver != null)
 					semvers.push(semver);
 				else
@@ -1116,7 +1125,7 @@ class Main {
 			if (semvers.length > 0)
 				semvers.sort(SemVer.compare);
 
-			var versions = [];
+			final versions = [];
 			for (v in semvers)
 				versions.push((v : String));
 			for (v in others)
@@ -1124,7 +1133,7 @@ class Main {
 
 			if (dev == null) {
 				for (i in 0...versions.length) {
-					var v = versions[i];
+					final v = versions[i];
 					if (v == current)
 						versions[i] = '[$v]';
 				}
@@ -1171,8 +1180,8 @@ class Main {
 	}
 
 	function projectNameToDir( rep:String, project:String ) {
-		var p = project.toLowerCase();
-		var l = FileSystem.readDirectory(rep).filter(function (dir) return dir.toLowerCase() == p);
+		final p = project.toLowerCase();
+		final l = FileSystem.readDirectory(rep).filter(function (dir) return dir.toLowerCase() == p);
 
 		switch (l) {
 			case []: return project;
@@ -1190,7 +1199,11 @@ class Main {
 	function doUpdate( p : String, state : { updated : Bool, rep : String, prompt : Bool } ) {
 		final pdir = state.rep + Data.safe(p);
 
-		final vcs = Vcs.getVcsForDevLib(pdir, settings);
+		final vcs = Vcs.getVcsForDevLib(pdir, {
+			flat: settings.debug,
+			debug: settings.debug,
+			quiet: settings.quiet
+		});
 		if(vcs != null) {
 			if(!vcs.available)
 				throw VcsError.VcsUnavailable(vcs);
@@ -1220,10 +1233,10 @@ class Main {
 	}
 
 	function remove() {
-		var rep = getRepository();
-		var prj = getArgument("Library");
-		var version = argsIterator.next();
-		var pdir = rep + Data.safe(prj);
+		final rep = getRepository();
+		final prj = getArgument("Library");
+		final version = argsIterator.next();
+		final pdir = rep + Data.safe(prj);
 		if( version == null ) {
 			if( !FileSystem.exists(pdir) )
 				throw 'Library $prj is not installed';
@@ -1236,14 +1249,14 @@ class Main {
 			return;
 		}
 
-		var vdir = pdir + "/" + Data.safe(version);
+		final vdir = pdir + "/" + Data.safe(version);
 		if( !FileSystem.exists(vdir) )
 			throw 'Library $prj does not have version $version installed';
 
-		var cur = File.getContent(pdir + "/.current").trim(); // set version regardless of dev
+		final cur = File.getContent(pdir + "/.current").trim(); // set version regardless of dev
 		if( cur == version )
 			throw 'Cannot remove current version of library $prj';
-		var dev = try getDev(pdir) catch (_:Dynamic) null; // dev is checked here
+		final dev = try getDev(pdir) catch (_:Dynamic) null; // dev is checked here
 		if( dev == vdir )
 			throw 'Cannot remove dev version of library $prj';
 		deleteRec(vdir);
@@ -1255,12 +1268,12 @@ class Main {
 	}
 
 	function setCurrent( rep : String, prj : String, version : String, doAsk : Bool ) {
-		var pdir = rep + Data.safe(prj);
-		var vdir = pdir + "/" + Data.safe(version);
+		final pdir = rep + Data.safe(prj);
+		final vdir = pdir + "/" + Data.safe(version);
 		if( !FileSystem.exists(vdir) ){
 			Cli.print('Library $prj version $version is not installed');
 			if(Cli.ask("Would you like to install it?")) {
-				var info = retry(site.infos.bind(prj));
+				final info = retry(site.infos.bind(prj));
 				doInstall(rep, info.name, version, true);
 			}
 			return;
@@ -1274,11 +1287,11 @@ class Main {
 	}
 
 	function checkRec( rep : String, prj : String, version : String, l : List<{ project : String, version : String, dir : String, info : Infos }>, ?returnDependencies : Bool = true ) {
-		var pdir = rep + Data.safe(prj);
-		var explicitVersion = version != null;
-		var version = if( version != null ) version else getCurrent(prj, pdir);
+		final pdir = rep + Data.safe(prj);
+		final explicitVersion = version != null;
+		final version = if( version != null ) version else getCurrent(prj, pdir);
 
-		var dev = try getDev(pdir) catch (_:Dynamic) null;
+		final dev = try getDev(pdir) catch (_:Dynamic) null;
 		var vdir = pdir + "/" + Data.safe(version);
 
 		if( dev != null && (!explicitVersion || !FileSystem.exists(vdir)) )
@@ -1293,12 +1306,15 @@ class Main {
 					return;
 				throw 'Library $prj has two versions included : $version and ${p.version}';
 			}
-		var json = try File.getContent(vdir+"/"+Data.JSON) catch( e : Dynamic ) null;
-		var inf = Data.readData(json, json != null ? CheckSyntax : NoCheck);
-		l.add({
-			project: prj,
-			version: version,
-			dir: haxe.io.Path.addTrailingSlash(vdir), info: inf }
+		final json = try File.getContent(vdir+"/"+Data.JSON) catch( e : Dynamic ) null;
+		final inf = Data.readData(json, json != null ? CheckSyntax : NoCheck);
+		l.add(
+			{
+				project: prj,
+				version: version,
+				dir: haxe.io.Path.addTrailingSlash(vdir),
+				info: inf
+			}
 		);
 		if( returnDependencies ) {
 			for( d in inf.dependencies )
@@ -1308,8 +1324,8 @@ class Main {
 	}
 
 	function path() {
-		var rep = getRepository();
-		var list = new List();
+		final rep = getRepository();
+		final list = new List();
 		var libInfo:Array<String>;
 		for(arg in argsIterator){
 			libInfo = arg.split(":");
@@ -1320,7 +1336,7 @@ class Main {
 			}
 		}
 		for( d in list ) {
-			var ndir = d.dir + "ndll";
+			final ndir = d.dir + "ndll";
 			if (FileSystem.exists(ndir))
 				Sys.println('-L $ndir/');
 
@@ -1330,7 +1346,7 @@ class Main {
 
 			var dir = d.dir;
 			if (d.info.classPath != "") {
-				var cp = d.info.classPath;
+				final cp = d.info.classPath;
 				dir = haxe.io.Path.addTrailingSlash( d.dir + cp );
 			}
 			Sys.println(dir);
@@ -1358,7 +1374,7 @@ class Main {
 		if( !FileSystem.exists(proj) ) {
 			FileSystem.createDirectory(proj);
 		}
-		var devfile = proj+"/.dev";
+		final devfile = proj+"/.dev";
 		if( dir == null ) {
 			if( FileSystem.exists(devfile) )
 				FileSystem.deleteFile(devfile);
@@ -1389,24 +1405,37 @@ class Main {
 		// TODO: ask if existing repo have changes.
 
 		// find existing repo:
-		var vcs = Vcs.getVcsForDevLib(proj, settings);
+		var vcs = Vcs.getVcsForDevLib(proj, {
+			flat: settings.debug,
+			debug: settings.debug,
+			quiet: settings.quiet
+		});
 		// remove existing repos:
 		while(vcs != null) {
 			deleteRec(proj + "/" + vcs.directory);
-			vcs = Vcs.getVcsForDevLib(proj, settings);
+			vcs = Vcs.getVcsForDevLib(proj, {
+				flat: settings.debug,
+				debug: settings.debug,
+				quiet: settings.quiet
+			});
 		}
 	}
 
 	inline function useVcs(id:VcsID, fn:Vcs->Void):Void {
 		// Prepare check vcs.available:
-		var vcs = Vcs.get(id, settings);
+		final vcs = Vcs.get(id, {
+			flat: settings.debug,
+			debug: settings.debug,
+			quiet: settings.quiet
+		}
+		);
 		if(vcs == null || !vcs.available)
 			throw 'Could not use $id, please make sure it is installed and available in your PATH.';
 		return fn(vcs);
 	}
 
 	function vcs(id:VcsID) {
-		var rep = getRepository();
+		final rep = getRepository();
 		useVcs(id, function(vcs)
 			doVcsInstall(
 				rep, vcs, getArgument("Library name"),
@@ -1428,7 +1457,7 @@ class Main {
 				vcs.clone(libPath, url, branch, version);
 			} catch(error:VcsError) {
 				deleteRec(libPath);
-				var message = switch(error) {
+				final message = switch(error) {
 					case VcsUnavailable(vcs):
 						'Could not use ${vcs.executable}, please make sure it is installed and available in your PATH.';
 					case CantCloneRepo(vcs, repo, stderr):
@@ -1503,16 +1532,16 @@ class Main {
 	}
 
 	static function doRun( rep:String, project:String, args:Array<String>, ?version:String, global = false ) {
-		var pdir = rep + Data.safe(project);
+		final pdir = rep + Data.safe(project);
 		if( !FileSystem.exists(pdir) )
 			throw "Library "+project+" is not installed";
 		pdir += "/";
 		if (version == null)
 			version = getCurrent(project, pdir);
-		var dev = try getDev(pdir) catch ( e : Dynamic ) null;
-		var vdir = dev != null ? dev : pdir + Data.safe(version);
+		final dev = try getDev(pdir) catch ( e : Dynamic ) null;
+		final vdir = dev != null ? dev : pdir + Data.safe(version);
 
-		var infos =
+		final infos =
 			try
 				Data.readData(File.getContent(vdir + '/haxelib.json'), false)
 			catch (e:Dynamic)
@@ -1541,9 +1570,9 @@ class Main {
 	}
 
 	static function runScriptArgs(project:String, main:String, dependencies:Dependencies, global:Bool):Array<String> {
-		var deps = dependencies.toArray();
+		final deps = dependencies.toArray();
 		deps.push( { name: project, version: DependencyVersion.DEFAULT } );
-		var args = [];
+		final args = [];
 		// TODO: change comparison to '4.0.0' upon Haxe 4.0 release
 		if(global && SemVer.compare(haxeVersion, SemVer.ofString('4.0.0-rc.5')) >= 0) {
 			args.push('--haxelib-global');
@@ -1589,7 +1618,7 @@ class Main {
 	}
 
 	function loadProxy() {
-		var rep = getRepository();
+		final rep = getRepository();
 		try Http.PROXY = haxe.Unserializer.run(File.getContent(rep + "/.proxy")) catch( e : Dynamic ) { };
 	}
 
