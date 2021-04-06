@@ -137,4 +137,33 @@ class FsUtils {
         try FileSystem.fullPath(path) catch (error:String) if (error == "std@file_full_path") errors++;
         return errors == 2;
     }
+
+	public static function getHomePath():String {
+		var home:String = null;
+		if (IS_WINDOWS) {
+			home = Sys.getEnv("USERPROFILE");
+			if (home == null) {
+				var drive = Sys.getEnv("HOMEDRIVE");
+				var path = Sys.getEnv("HOMEPATH");
+				if (drive != null && path != null)
+					home = drive + path;
+			}
+			if (home == null)
+				throw "Could not determine home path. Please ensure that USERPROFILE or HOMEDRIVE+HOMEPATH environment variables are set.";
+		} else {
+			home = Sys.getEnv("HOME");
+			if (home == null)
+				throw "Could not determine home path. Please ensure that HOME environment variable is set.";
+		}
+		return home;
+	}
+
+	// haxe 3.1.3 doesn't have FileSystem.absolutePath()
+	public static function absolutePath(path:String) {
+		if (StringTools.startsWith(path, '/') || path.charAt(1) == ':' || StringTools.startsWith(path, '\\\\')) {
+			return path;
+		}
+		return haxe.io.Path.join([Sys.getCwd(), path]);
+	}
+
 }

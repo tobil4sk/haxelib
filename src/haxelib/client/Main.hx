@@ -156,8 +156,6 @@ class Main {
 
 	static var VERSION:SemVer = SemVer.ofString(getHaxelibVersion());
 	static var VERSION_LONG:String = getHaxelibVersionLong();
-	static var REPNAME = "lib";
-	static var REPODIR = ".haxelib";
 	static var SERVER = {
 		protocol : "https",
 		host : "lib.haxe.org",
@@ -167,7 +165,7 @@ class Main {
 		apiVersion : "3.0",
 		noSsl : false
 	};
-	static var IS_WINDOWS = (Sys.systemName() == "Windows");
+	public static var IS_WINDOWS = (Sys.systemName() == "Windows");
 
 	var argcur : Int;
 	var args : Array<String>;
@@ -450,7 +448,7 @@ class Main {
 		}
 
 		if (!isHaxelibRun && !settings.system) {
-			var rep = try getGlobalRepository() catch (_:Dynamic) null;
+			var rep = try RepoManager.getGlobalRepository() catch (_:Dynamic) null;
 			if (rep != null && FileSystem.exists(rep + HAXELIB_LIBNAME)) {
 				argcur = 0; // send all arguments
 				try {
@@ -1092,132 +1090,20 @@ class Main {
 		}
 	}
 
-	static public function getHomePath():String{
-		var home:String = null;
-		if (IS_WINDOWS) {
-			home = Sys.getEnv("USERPROFILE");
-			if (home == null) {
-				var drive = Sys.getEnv("HOMEDRIVE");
-				var path = Sys.getEnv("HOMEPATH");
-				if (drive != null && path != null)
-					home = drive + path;
-			}
-			if (home == null)
-				throw "Could not determine home path. Please ensure that USERPROFILE or HOMEDRIVE+HOMEPATH environment variables are set.";
-		} else {
-			home = Sys.getEnv("HOME");
-			if (home == null)
-				throw "Could not determine home path. Please ensure that HOME environment variable is set.";
-		}
-		return home;
-	}
-
-	static public function getConfigFile():String {
-		return Path.addTrailingSlash( getHomePath() ) + ".haxelib";
-	}
-
-	static public function getGlobalRepositoryPath(create = false):String {
-		// first check the env var
-		var rep = Sys.getEnv("HAXELIB_PATH");
-		if (rep != null)
-			return rep.trim();
-
-		// try to read from user config
-		rep = try File.getContent(getConfigFile()).trim() catch (_:Dynamic) null;
-		if (rep != null)
-			return rep;
-
-		if (!IS_WINDOWS) {
-			// on unixes, try to read system-wide config
-			rep = try File.getContent("/etc/.haxelib").trim() catch (_:Dynamic) null;
-			if (rep == null)
-				throw "This is the first time you are running haxelib. Please run `haxelib setup` first";
-		} else {
-			// on windows, try to use haxe installation path
-			rep = getWindowsDefaultGlobalRepositoryPath();
-			if (create)
-				try safeDir(rep) catch(e:Dynamic) throw 'Error accessing Haxelib repository: $e';
-		}
-
-		return rep;
-	}
-
-	// The Windows haxe installer will setup %HAXEPATH%. We will default haxelib repo to %HAXEPATH%/lib.
-	// When there is no %HAXEPATH%, we will use a "haxelib" directory next to the config file, ".haxelib".
-	static function getWindowsDefaultGlobalRepositoryPath():String {
-		var haxepath = Sys.getEnv("HAXEPATH");
-		if (haxepath != null)
-			return Path.addTrailingSlash(haxepath.trim()) + REPNAME;
-		else
-			return Path.join([Path.directory(getConfigFile()), "haxelib"]);
-	}
-
-	public static function getSuggestedGlobalRepositoryPath():String {
-		if (IS_WINDOWS)
-			return getWindowsDefaultGlobalRepositoryPath();
-
-		return if (FileSystem.exists("/usr/share/haxe")) // for Debian
-			'/usr/share/haxe/$REPNAME'
-		else if (Sys.systemName() == "Mac") // for newer OSX, where /usr/lib is not writable
-			'/usr/local/lib/haxe/$REPNAME'
-		else
-			'/usr/lib/haxe/$REPNAME'; // for other unixes
-	}
 
 	function getRepository():String {
 		if (!settings.global)
-			return findRepository();
+			return RepoManager.findRepository();
 		else
-			return getGlobalRepository();
-	}
-
-	/** Get the repository path to the local one if it exists, otherwise get global repo. **/
-	public static function findRepository() {
-		return switch getLocalRepository() {
-			case null: getGlobalRepository();
-			case repo: Path.addTrailingSlash(FileSystem.fullPath(repo));
-		}
-	}
-
-	static function getLocalRepository():Null<String> {
-		var dir = Path.removeTrailingSlashes(Sys.getCwd());
-		while (dir != null) {
-			var repo = Path.addTrailingSlash(dir) + REPODIR;
-			if(FileSystem.exists(repo) && FileSystem.isDirectory(repo)) {
-				return repo;
-			} else {
-				dir = new Path(dir).dir;
-			}
-		}
-		return null;
-	}
-
-	static function getGlobalRepository():String {
-		var rep = getGlobalRepositoryPath(true);
-		if (!FileSystem.exists(rep))
-			throw "haxelib Repository " + rep + " does not exist. Please run `haxelib setup` again.";
-		else if (!FileSystem.isDirectory(rep))
-			throw "haxelib Repository " + rep + " exists, but is a file, not a directory. Please remove it and run `haxelib setup` again.";
-		return Path.addTrailingSlash(rep);
-	}
-
-	/** Set the global haxelib repository to `path` in the haxelib config file **/
-	public static function saveSetup(path:String):Void {
-		var configFile = getConfigFile();
-
-		if (isSamePath(path, configFile))
-			throw "Can't use " + path + " because it is reserved for config file";
-
-		safeDir(path);
-		File.saveContent(configFile, path);
+			return RepoManager.getGlobalRepository();
 	}
 
 	function setup() {
-		var rep = try getGlobalRepositoryPath() catch (_:Dynamic) null;
+		var rep = try RepoManager.getGlobalRepositoryPath() catch (_:Dynamic) null;
 
 		if (args.length <= argcur) {
 			if (rep == null)
-				rep = getSuggestedGlobalRepositoryPath();
+				rep = RepoManager.getSuggestedGlobalRepositoryPath();
 			print("Please enter haxelib repository path with write access");
 			print("Hit enter for default (" + rep + ")");
 		}
@@ -1239,7 +1125,7 @@ class Main {
 
 		rep = try absolutePath(rep) catch (e:Dynamic) rep;
 
-		saveSetup(rep);
+		RepoManager.saveSetup(rep);
 
 		print("haxelib repository is now " + rep);
 	}
@@ -1779,26 +1665,16 @@ class Main {
 	}
 
 	function newRepo() {
-		var path = absolutePath(REPODIR);
-		var created = FsUtils.safeDir(path, true);
-		if (created)
-			print('Local repository created ($path)');
-		else
-			print('Local repository already exists ($path)');
+		RepoManager.newRepo();
 	}
 
 	function deleteRepo() {
-		var path = absolutePath(REPODIR);
-		var deleted = FsUtils.deleteRec(path);
-		if (deleted)
-			print('Local repository deleted ($path)');
-		else
-			print('No local repository found ($path)');
+		RepoManager.deleteRepo();
 	}
 
 	// ----------------------------------
 
-	inline function print(str)
+	public static inline function print(str)
 		Sys.println(str);
 
 	static function main() {
@@ -1820,20 +1696,12 @@ class Main {
 		}
 	}
 
-	// haxe 3.1.3 doesn't have FileSystem.absolutePath()
-	static function absolutePath(path:String) {
-		if (StringTools.startsWith(path, '/') || path.charAt(1) == ':' || StringTools.startsWith(path, '\\\\')) {
-			return path;
-		}
-		return haxe.io.Path.join([Sys.getCwd(), path]);
-	}
-
 	// deprecated commands
 	function local() {
 		doInstallFile(getRepository(), param("Package"), true, true);
 	}
 
 	function updateSelf() {
-		updateByName(getGlobalRepository(), HAXELIB_LIBNAME);
+		updateByName(RepoManager.getGlobalRepository(), HAXELIB_LIBNAME);
 	}
 }
