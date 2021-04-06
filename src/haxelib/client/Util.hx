@@ -16,7 +16,7 @@ class Util {
 		return haxe.Json.parse(sys.io.File.getContent("haxelib.json")).version;
 	}
 	#end
-	
+
 	macro static public function getHaxelibVersion() {
 		return macro $v{readVersionFromHaxelibJson()};
 	}
@@ -32,12 +32,12 @@ class Util {
 
 			//get commit sha
 			p = new sys.io.Process("git", ["rev-parse", "HEAD"]);
-			var sha = p.stdout.readAll().toString().trim();
+			final sha = p.stdout.readAll().toString().trim();
 			p.close();
 
 			//check to see if there is changes, staged or not
 			p = new sys.io.Process("git", ["status", "--porcelain"]);
-			var changes = p.stdout.readAll().toString().trim();
+			final changes = p.stdout.readAll().toString().trim();
 			p.close();
 
 			version += switch(changes) {
