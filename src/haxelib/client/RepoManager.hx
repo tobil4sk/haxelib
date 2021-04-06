@@ -15,16 +15,19 @@ class RepoManager {
 	static var REPNAME = "lib";
 	static var REPODIR = ".haxelib";
 
+	/** Return the default path **/
 	public static function getSuggestedGlobalRepositoryPath():String {
 		if (Main.IS_WINDOWS)
 			return getWindowsDefaultGlobalRepositoryPath();
 
 		return if (FileSystem.exists("/usr/share/haxe")) // for Debian
-			'/usr/share/haxe/$REPNAME' else if (Sys.systemName() == "Mac") // for newer OSX, where /usr/lib is not writable
-			'/usr/local/lib/haxe/$REPNAME' else '/usr/lib/haxe/$REPNAME'; // for other unixes
+			'/usr/share/haxe/$REPNAME'
+		else if (Sys.systemName() == "Mac") // for newer OSX, where /usr/lib is not writable
+			'/usr/local/lib/haxe/$REPNAME'
+		else '/usr/lib/haxe/$REPNAME'; // for other unixes
 	}
 
-	/** Get the repository path to the local one if it exists, otherwise get global repo. **/
+	/** Get the repository path to the local one if it exists, otherwise get global repo path **/
 	public static function findRepository() {
 		return switch getLocalRepository() {
 			case null: getGlobalRepository();
@@ -45,6 +48,7 @@ class RepoManager {
 		return null;
 	}
 
+	/** Return the global repository path, but throw an error if it doesn't exist or if it is not a directory **/
 	public static function getGlobalRepository():String {
 		var rep = getGlobalRepositoryPath(true);
 		if (!FileSystem.exists(rep))
@@ -54,7 +58,7 @@ class RepoManager {
 		return Path.addTrailingSlash(rep);
 	}
 
-	/** Set the global haxelib repository to `path` in the haxelib config file **/
+	/** Set `path` as the global haxelib repository in the haxelib config file **/
 	public static function saveSetup(path:String):Void {
 		var configFile = getConfigFile();
 
@@ -65,10 +69,15 @@ class RepoManager {
 		File.saveContent(configFile, path);
 	}
 
-	public static function getConfigFile():String {
-		return Path.addTrailingSlash(getHomePath()) + ".haxelib";
-	}
+	/**
+		Return the global Haxelib repository path.
 
+		First check HAXELIB_PATH environment variable, then content of config file.
+		If both fail, check default path.
+
+		At this point if `create` is true then
+		attempt to create this default directory (only on windows)
+	 **/
 	public static function getGlobalRepositoryPath(create = false):String {
 		// first check the env var
 		var rep = Sys.getEnv("HAXELIB_PATH");
@@ -98,16 +107,13 @@ class RepoManager {
 		return rep;
 	}
 
-	// The Windows haxe installer will setup %HAXEPATH%. We will default haxelib repo to %HAXEPATH%/lib.
-	// When there is no %HAXEPATH%, we will use a "haxelib" directory next to the config file, ".haxelib".
-	static function getWindowsDefaultGlobalRepositoryPath():String {
-		var haxepath = Sys.getEnv("HAXEPATH");
-		if (haxepath != null)
-			return Path.addTrailingSlash(haxepath.trim()) + REPNAME;
-		else
-			return Path.join([Path.directory(getConfigFile()), "haxelib"]);
-	}
+	/**
+		Create a new local repository in the current working directory if one doesn't already exist
 
+		Returns its path if successful
+
+		Throws RepoException if repository already exists
+	**/
 	public static function newRepo():String {
 		var path = absolutePath(REPODIR);
 		var created = FsUtils.safeDir(path, true);
@@ -115,13 +121,33 @@ class RepoManager {
 			throw new RepoException('Local repository already exists ($path)');
 		return path;
 	}
+	/**
+		Delete the local repository in the current working directory if it exists
 
+		Returns the path of the deleted repository if successful
+
+		Throws RepoException if no repository found
+	**/
 	public static function deleteRepo():String {
 		var path = absolutePath(REPODIR);
 		var deleted = FsUtils.deleteRec(path);
 		if (!deleted)
 			throw new RepoException('No local repository found ($path)');
 		return path;
+	}
+
+	static function getConfigFile():String {
+		return Path.addTrailingSlash(getHomePath()) + ".haxelib";
+	}
+
+	/** The Windows haxe installer will setup %HAXEPATH%. We will default haxelib repo to %HAXEPATH%/lib.
+		When there is no %HAXEPATH%, we will use a "haxelib" directory next to the config file, ".haxelib". **/
+	static function getWindowsDefaultGlobalRepositoryPath():String {
+		var haxepath = Sys.getEnv("HAXEPATH");
+		if (haxepath != null)
+			return Path.addTrailingSlash(haxepath.trim()) + REPNAME;
+		else
+			return Path.join([Path.directory(getConfigFile()), "haxelib"]);
 	}
 
 }
