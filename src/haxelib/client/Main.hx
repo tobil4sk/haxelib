@@ -1272,7 +1272,11 @@ class Main {
 	function doUpdate( p : String, state : { updated : Bool, rep : String, prompt : Bool } ) {
 		final pdir = state.rep + Data.safe(p);
 
-		final vcs = Vcs.getVcsForDevLib(pdir, settings);
+		final vcs = Vcs.getVcsForDevLib(pdir, {
+			flat: settings.debug,
+			debug: settings.debug,
+			quiet: settings.quiet
+		});
 		if(vcs != null) {
 			if(!vcs.available)
 				throw VcsError.VcsUnavailable(vcs);
@@ -1467,17 +1471,30 @@ class Main {
 		//TODO: ask if existing repo have changes.
 
 		// find existing repo:
-		var vcs = Vcs.getVcsForDevLib(proj, settings);
+		var vcs = Vcs.getVcsForDevLib(proj, {
+			flat: settings.debug,
+			debug: settings.debug,
+			quiet: settings.quiet
+		});
 		// remove existing repos:
 		while(vcs != null) {
 			deleteRec(proj + "/" + vcs.directory);
-			vcs = Vcs.getVcsForDevLib(proj, settings);
+			vcs = Vcs.getVcsForDevLib(proj, {
+				flat: settings.debug,
+				debug: settings.debug,
+				quiet: settings.quiet
+			});
 		}
 	}
 
 	inline function useVcs(id:VcsID, fn:Vcs->Void):Void {
 		// Prepare check vcs.available:
-		final vcs = Vcs.get(id, settings);
+		final vcs = Vcs.get(id, {
+			flat: settings.debug,
+			debug: settings.debug,
+			quiet: settings.quiet
+		}
+		);
 		if(vcs == null || !vcs.available)
 			throw 'Could not use $id, please make sure it is installed and available in your PATH.';
 		return fn(vcs);
