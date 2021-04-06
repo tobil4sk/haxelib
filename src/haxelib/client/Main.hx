@@ -154,6 +154,7 @@ class ProgressIn extends haxe.io.Input {
 
 class Main {
 	static inline var HAXELIB_LIBNAME = "haxelib";
+	public static final IS_WINDOWS = (Sys.systemName() == "Windows");
 
 	static var VERSION:SemVer = SemVer.ofString(getHaxelibVersion());
 	static var VERSION_LONG:String = getHaxelibVersionLong();
@@ -166,7 +167,7 @@ class Main {
 		apiVersion : "3.0",
 		noSsl : false
 	};
-	public static var IS_WINDOWS = (Sys.systemName() == "Windows");
+
 
 	var argcur : Int;
 	var args : Array<String>;
