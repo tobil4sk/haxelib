@@ -127,7 +127,7 @@ class RepoManager {
 		Throws RepoException if repository already exists.
 	**/
 	public static function newRepo():String {
-		var path = absolutePath(REPODIR);
+		var path = FileSystem.absolutePath(REPODIR);
 		var created = FsUtils.safeDir(path, true);
 		if(!created)
 			throw new RepoException('Local repository already exists ($path)');
@@ -142,7 +142,7 @@ class RepoManager {
 		Throws RepoException if no repository found.
 	**/
 	public static function deleteRepo():String {
-		var path = absolutePath(REPODIR);
+		var path = FileSystem.absolutePath(REPODIR);
 		var deleted = FsUtils.deleteRec(path);
 		if (!deleted)
 			throw new RepoException('No local repository found ($path)');
