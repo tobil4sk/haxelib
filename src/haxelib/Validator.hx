@@ -37,16 +37,16 @@ typedef Validatable = {
 
 class Validator {
 	#if macro
-	static var ARG = 'v';
-	var pos:Position;
-	var IARG:Expr;
+	static final ARG = 'v';
+	final pos:Position;
+	final IARG:Expr;
 	function new(pos) {
 		this.pos = pos;
 		IARG = macro @:pos(pos) $i{ARG};
 	}
 
 	function doCheck(t:Type, e:Expr) {
-		var ct = t.toComplexType();
+		final ct = t.toComplexType();
 		return
 			macro @:pos (function ($ARG : $ct) ${makeCheck(t)})($e);
 	}
@@ -72,15 +72,15 @@ class Validator {
 			switch Context.follow(t) {
 				case TAnonymous(_.get().fields => fields):
 
-					var block:Array<Expr> = [
+					final block:Array<Expr> = [
 						for (f in fields)
 						if (f.kind.match(FVar(AccNormal, _)))
 						{
-							var name = f.name;
+							final name = f.name;
 							var rec = doCheck(f.type, macro @:pos(pos) $IARG.$name);
 
 							if (f.meta.has(':requires')) {
-								var body = [];
+								final body = [];
 								for (m in f.meta.get())
 									if (m.name == ':requires')
 										for (p in m.params)
@@ -97,7 +97,7 @@ class Validator {
 											//cond = macro @:pos(pos) $p && $cond;
 										//}
 
-								var t = f.type.toComplexType();
+								final t = f.type.toComplexType();
 								rec = macro @:pos(pos) {
 									$rec;
 									(function($ARG : $t) $b{body})($IARG.$name);
@@ -141,8 +141,8 @@ class Validator {
 					makeCheck(t);
 
 				case TAbstract(_.get() => a, _) if (a.meta.has(':enum')):
-					var name = a.module + '.' + a.name;
-					var options:Array<Expr> = [
+					final name = a.module + '.' + a.name;
+					final options:Array<Expr> = [
 						for (f in a.impl.get().statics.get())
 						if (f.kind.match(FVar(_, _)))
 						macro @:pos(pos) $p{(name+'.'+f.name).split('.')}
@@ -158,12 +158,12 @@ class Validator {
 					}
 
 				case TDynamic(k):
-					var checker = makeCheck(k);
-					var ct = k.toComplexType();
+					final checker = makeCheck(k);
+					final ct = k.toComplexType();
 					macro @:pos(pos) {
 						if (!Reflect.isObject($i{ARG})) throw 'object expected';
 						for (f in Reflect.fields($i{ARG})) {
-							var $ARG:$ct = Reflect.field($i{ARG}, f);
+							final $ARG:$ct = Reflect.field($i{ARG}, f);
 							$checker;
 						}
 					}

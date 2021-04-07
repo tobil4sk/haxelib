@@ -32,36 +32,36 @@ import haxelib.Validator;
 using StringTools;
 
 typedef UserInfos = {
-	var name : String;
-	var fullname : String;
-	var email : String;
-	var projects : Array<String>;
+	final name : String;
+	final fullname : String;
+	final email : String;
+	final projects : Array<String>;
 }
 
 typedef VersionInfos = {
-	var date : String;
-	var name : SemVer;//TODO: this should eventually be called `number`
-	var downloads : Int;
-	var comments : String;
+	final date : String;
+	final name : SemVer;//TODO: this should eventually be called `number`
+	final downloads : Int;
+	final comments : String;
 }
 
 typedef ProjectInfos = {
-	var name : String;
-	var desc : String;
-	var website : String;
-	var owner : String;
-	var contributors : Array<{ name:String, fullname:String }>;
-	var license : String;
-	var curversion : String;
-	var downloads : Int;
-	var versions : Array<VersionInfos>;
-	var tags : List<String>;
+	final name : String;
+	final desc : String;
+	final website : String;
+	final owner : String;
+	final contributors : Array<{ name:String, fullname:String }>;
+	final license : String;
+	final curversion : String;
+	final downloads : Int;
+	final versions : Array<VersionInfos>;
+	final tags : List<String>;
 }
 
 @:enum abstract CheckLevel(Int) {
-	var NoCheck = 0;
-	var CheckSyntax = 1;
-	var CheckData = 2;
+	final NoCheck = 0;
+	final CheckSyntax = 1;
+	final CheckData = 2;
 
 	@:from static inline function fromBool(check:Bool):CheckLevel {
 		return check ? CheckData : NoCheck;
@@ -88,21 +88,21 @@ abstract DependencyVersion(String) to String from SemVer {
 	static public function isValid(s:String)
 		return new DependencyVersion(s).toValidatable().validate() == None;
 
-	static public var DEFAULT(default, null) = new DependencyVersion('');
-	static public var GIT(default, null) = new DependencyVersion('git');
+	static public final DEFAULT = new DependencyVersion('');
+	static public final GIT = new DependencyVersion('git');
 }
 
 abstract Dependencies(Dynamic<DependencyVersion>) from Dynamic<DependencyVersion> {
 	@:to public function toArray():Array<Dependency> {
-		var fields = Reflect.fields(this);
+		final fields = Reflect.fields(this);
 		fields.sort(Reflect.compare);
 
-		var result:Array<Dependency> = new Array<Dependency>();
+		final result:Array<Dependency> = new Array<Dependency>();
 
 		for (f in fields) {
 			var value:String = Reflect.field(this, f);
 
-			var isGit = value != null && (value + "").startsWith("git:");
+			final isGit = value != null && (value + "").startsWith("git:");
 
 			if ( !isGit )
 			{
@@ -118,9 +118,9 @@ abstract Dependencies(Dynamic<DependencyVersion>) from Dynamic<DependencyVersion
 			else
 			{
 				value = value.substr(4);
-				var urlParts = value.split("#");
-				var url = urlParts[0];
-				var branch = urlParts.length > 1 ? urlParts[1] : null;
+				final urlParts = value.split("#");
+				final url = urlParts[0];
+				final branch = urlParts.length > 1 ? urlParts[1] : null;
 
 				result.push ({
 					name: f,
@@ -142,9 +142,9 @@ abstract Dependencies(Dynamic<DependencyVersion>) from Dynamic<DependencyVersion
 }
 
 @:enum abstract DependencyType(String) {
-	var Haxelib = null;
-	var Git = 'git';
-	var Mercurial = 'hg';
+	final Haxelib = null;
+	final Git = 'git';
+	final Mercurial = 'hg';
 }
 
 typedef Dependency = {
@@ -175,17 +175,17 @@ typedef Infos = {
 }
 
 @:enum abstract License(String) to String {
-	var Gpl = 'GPL';
-	var Lgpl = 'LGPL';
-	var Mit = 'MIT';
-	var Bsd = 'BSD';
-	var Public = 'Public';
-	var Apache = 'Apache';
+	final Gpl = 'GPL';
+	final Lgpl = 'LGPL';
+	final Mit = 'MIT';
+	final Bsd = 'BSD';
+	final Public = 'Public';
+	final Apache = 'Apache';
 }
 
 abstract ProjectName(String) to String {
-	static var RESERVED_NAMES = ["haxe", "all"];
-	static var RESERVED_EXTENSIONS = ['.zip', '.hxml'];
+	static final RESERVED_NAMES = ["haxe", "all"];
+	static final RESERVED_EXTENSIONS = ['.zip', '.hxml'];
 	inline function new(s:String)
 		this = s;
 
@@ -200,8 +200,8 @@ abstract ProjectName(String) to String {
 				}
 		}
 
-	static var rules = {//using an array because order might matter
-		var a = new Array<{ msg: String, check:String->Bool }>();
+	static final rules = {//using an array because order might matter
+		final a = new Array<{ msg: String, check:String->Bool }>();
 
 		function add(m, r)
 			a.push( { msg: m, check: r } );
@@ -229,15 +229,15 @@ abstract ProjectName(String) to String {
 			case v: v;
 		}
 
-	static public var DEFAULT(default, null) = new ProjectName('unknown');
+	static public final DEFAULT = new ProjectName('unknown');
 }
 
 class Data {
 
-	public static var JSON(default, null) = "haxelib.json";
-	public static var DOCXML(default, null) = "haxedoc.xml";
-	public static var REPOSITORY(default, null) = "files/3.0";
-	public static var alphanum(default, null) = ~/^[A-Za-z0-9_.-]+$/;
+	public static final JSON = "haxelib.json";
+	public static final DOCXML = "haxedoc.xml";
+	public static final REPOSITORY = "files/3.0";
+	public static final alphanum = ~/^[A-Za-z0-9_.-]+$/;
 
 
 	public static function safe( name : String ) {
@@ -259,7 +259,7 @@ class Data {
 		if (preview == null)
 			preview = function (p) return p == null;
 
-		var versions = info.versions.copy();
+		final versions = info.versions.copy();
 		versions.sort(function (a, b) return -SemVer.compare(a.name, b.name));
 
 		for (v in versions)
@@ -274,7 +274,7 @@ class Data {
 		If it is in a folder, the path including a trailing slash is returned.
 	*/
 	public static function locateBasePath( zip : List<Entry> ):String {
-		var f = getJson(zip);
+		final f = getJson(zip);
 		return f.fileName.substr(0, f.fileName.length - JSON.length);
 	}
 
@@ -293,7 +293,7 @@ class Data {
 
 		for (f in zip)
 			if (predicate(f)) {
-				var depth = f.fileName.replace('\\', '/').split('/').length;//TODO: consider Path.normalize
+				final depth = f.fileName.replace('\\', '/').split('/').length;//TODO: consider Path.normalize
 				if ((depth == bestDepth && f.fileName < best.fileName) || depth < bestDepth) {
 					best = f;
 					bestDepth = depth;
@@ -319,8 +319,8 @@ class Data {
 
 	public static function checkClassPath( zip : List<Entry>, infos : Infos ) {
 		if ( infos.classPath != "" ) {
-			var basePath = Data.locateBasePath(zip);
-			var cp = basePath + infos.classPath;
+			final basePath = Data.locateBasePath(zip);
+			final cp = basePath + infos.classPath;
 
 			for( f in zip ) {
 				if( StringTools.startsWith(f.fileName,cp) )
@@ -331,7 +331,7 @@ class Data {
 	}
 
 	public static function readData( jsondata: String, check : CheckLevel ) : Infos {
-		var doc:Infos =
+		final doc:Infos =
 			try Json.parse(jsondata)
 			catch ( e : Dynamic )
 				if (check >= CheckLevel.CheckSyntax)

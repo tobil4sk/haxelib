@@ -53,7 +53,7 @@ abstract SemVer(String) to String {
 				if (data.previewNum == null) -1 else data.previewNum
 			];
 
-		var a = toArray(a.data),
+		final a = toArray(a.data),
 			b = toArray(b.data);
 
 		for (i in 0...a.length)
@@ -113,9 +113,9 @@ abstract SemVer(String) to String {
 	@:op(a != b) static inline function neq(a:SemVer, b:SemVer)
 		return compare(a, b) != 0;
 
-	static var FORMAT = ~/^(\d|[1-9]\d*)\.(\d|[1-9]\d*)\.(\d|[1-9]\d*)(-(alpha|beta|rc)(\.(\d|[1-9]\d*))?)?$/;
+	static final FORMAT = ~/^(\d|[1-9]\d*)\.(\d|[1-9]\d*)\.(\d|[1-9]\d*)(-(alpha|beta|rc)(\.(\d|[1-9]\d*))?)?$/;
 
-	static var cache = new Map();
+	static final cache = new Map();
 
 	@:to function get_data():SemVerData {
 		if (!cache.exists(this))
@@ -160,12 +160,12 @@ abstract SemVer(String) to String {
 		return Std.isOfType(s, String) && FORMAT.match(s.toLowerCase());
 
 	static public function ofString(s:String) {
-		var ret = new SemVer(s);
+		final ret = new SemVer(s);
 		ret.getData();
 		return ret;
 	}
 
-	static public var DEFAULT(default, null) = new SemVer('0.0.0');
+	static public final DEFAULT = new SemVer('0.0.0');
 }
 
 typedef SemVerData =  {
