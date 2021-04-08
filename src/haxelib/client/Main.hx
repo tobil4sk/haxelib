@@ -1095,7 +1095,7 @@ class Main {
 
 	function getRepository():String {
 		if (!settings.global)
-			return RepoManager.findRepository();
+			return RepoManager.findRepository(Sys.getCwd());
 		else
 			return RepoManager.getGlobalRepository();
 	}
@@ -1668,7 +1668,7 @@ class Main {
 
 	function newRepo() {
 		try {
-			var path = RepoManager.newRepo();
+			final path = RepoManager.newRepo(Sys.getCwd());
 			print('Local repository created ($path)');
 		} catch(e:RepoException)
 			print(e.message);
@@ -1676,7 +1676,7 @@ class Main {
 
 	function deleteRepo() {
 		try {
-			var path = RepoManager.deleteRepo();
+			final path = RepoManager.deleteRepo(Sys.getCwd());
 			print('Local repository deleted ($path)');
 		} catch(e:RepoException)
 			print(e.message);

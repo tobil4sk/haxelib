@@ -31,22 +31,25 @@ class RepoManager {
 		else '/usr/lib/haxe/$REPNAME'; // for other unixes
 	}
 
-	/** Get the repository path to the local one if it exists, otherwise get global repo path. **/
-	public static function findRepository() {
-		return switch getLocalRepository() {
+	/**
+		Get the path to the repository local to `dir` if one exists,
+		otherwise get global repository path.
+	**/
+	public static function findRepository(dir:String) {
+		return switch getLocalRepository(dir) {
 			case null: getGlobalRepository();
 			case repo: Path.addTrailingSlash(FileSystem.fullPath(repo));
 		}
 	}
 
 	/**
-		Search for the path to local repository, starting in current working directory
+		Search for the path to local repository, starting in `dir`
 		and then going up until root directory is reached.
 
 		Returns null if no local repository is found.
 	**/
-	static function getLocalRepository():Null<String> {
-		var dir = Path.removeTrailingSlashes(Sys.getCwd());
+	static function getLocalRepository(dir:String):Null<String> {
+		var dir = FileSystem.absolutePath(dir);
 		while (dir != null) {
 			final repo = Path.join([dir, REPODIR]);
 			if (FileSystem.exists(repo) && FileSystem.isDirectory(repo))
@@ -118,30 +121,30 @@ class RepoManager {
 	}
 
 	/**
-		Create a new local repository in the current working directory if one doesn't already exist.
+		Create a new local repository in the directory `dir` if one doesn't already exist.
 
-		Returns its path if successful.
+		Returns its full path if successful.
 
 		Throws RepoException if repository already exists.
 	**/
-	public static function newRepo():String {
-		var path = FileSystem.absolutePath(REPODIR);
-		var created = FsUtils.safeDir(path, true);
+	public static function newRepo(dir:String):String {
+		final path = FileSystem.absolutePath(Path.join([dir, REPODIR]));
+		final created = FsUtils.safeDir(path, true);
 		if(!created)
 			throw new RepoException('Local repository already exists ($path)');
 		return path;
 	}
 
 	/**
-		Delete the local repository in the current working directory if it exists.
+		Delete the local repository in the directory `dir`, if it exists.
 
-		Returns the path of the deleted repository if successful.
+		Returns the full path of the deleted repository if successful.
 
 		Throws RepoException if no repository found.
 	**/
-	public static function deleteRepo():String {
-		var path = FileSystem.absolutePath(REPODIR);
-		var deleted = FsUtils.deleteRec(path);
+	public static function deleteRepo(dir:String):String {
+		final path = FileSystem.absolutePath(Path.join([dir, REPODIR]));
+		final deleted = FsUtils.deleteRec(path);
 		if (!deleted)
 			throw new RepoException('No local repository found ($path)');
 		return path;
