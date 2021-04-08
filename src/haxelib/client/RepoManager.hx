@@ -16,8 +16,8 @@ class RepoException extends haxe.Exception {}
 
 /** Manages the haxelib database. **/
 class RepoManager {
-	static var REPNAME = "lib";
-	static var REPODIR = ".haxelib";
+	static final REPNAME = "lib";
+	static final REPODIR = ".haxelib";
 
 	/** Return the default path for the global directory. **/
 	public static function getSuggestedGlobalRepositoryPath():String {
@@ -48,12 +48,10 @@ class RepoManager {
 	static function getLocalRepository():Null<String> {
 		var dir = Path.removeTrailingSlashes(Sys.getCwd());
 		while (dir != null) {
-			var repo = Path.addTrailingSlash(dir) + REPODIR;
-			if (FileSystem.exists(repo) && FileSystem.isDirectory(repo)) {
+			final repo = Path.join([dir, REPODIR]);
+			if (FileSystem.exists(repo) && FileSystem.isDirectory(repo))
 				return repo;
-			} else {
-				dir = new Path(dir).dir;
-			}
+			dir = Path.directory(dir);
 		}
 		return null;
 	}
@@ -150,7 +148,7 @@ class RepoManager {
 	}
 
 	static function getConfigFile():String {
-		return Path.addTrailingSlash(getHomePath()) + ".haxelib";
+		return Path.join([getHomePath(), ".haxelib"]);
 	}
 
 	/**
@@ -159,11 +157,10 @@ class RepoManager {
 		When there is no %HAXEPATH%, we will use a "haxelib" directory next to the config file, ".haxelib".
 	**/
 	static function getWindowsDefaultGlobalRepositoryPath():String {
-		var haxepath = Sys.getEnv("HAXEPATH");
+		final haxepath = Sys.getEnv("HAXEPATH");
 		if (haxepath != null)
-			return Path.addTrailingSlash(haxepath.trim()) + REPNAME;
-		else
-			return Path.join([Path.directory(getConfigFile()), "haxelib"]);
+			return Path.join([haxepath.trim(), REPNAME]);
+		return Path.join([Path.directory(getConfigFile()), "haxelib"]);
 	}
 
 }
