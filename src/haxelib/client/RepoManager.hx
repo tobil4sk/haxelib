@@ -58,20 +58,20 @@ class RepoManager {
 
 	/** Return the global repository path, but throw an error if it doesn't exist or if it is not a directory. **/
 	public static function getGlobalRepository():String {
-		var rep = getGlobalRepositoryPath(true);
+		final rep = getGlobalRepositoryPath(true);
 		if (!FileSystem.exists(rep))
-			throw "haxelib Repository " + rep + " does not exist. Please run `haxelib setup` again.";
+			throw new RepoException('haxelib Repository $rep does not exist. Please run `haxelib setup` again.');
 		else if (!FileSystem.isDirectory(rep))
-			throw "haxelib Repository " + rep + " exists, but is a file, not a directory. Please remove it and run `haxelib setup` again.";
+			throw new RepoException('haxelib Repository $rep exists, but is a file, not a directory. Please remove it and run `haxelib setup` again.');
 		return Path.addTrailingSlash(rep);
 	}
 
 	/** Set `path` as the global haxelib repository in the haxelib config file. **/
 	public static function saveSetup(path:String):Void {
-		var configFile = getConfigFile();
+		final configFile = getConfigFile();
 
 		if (isSamePath(path, configFile))
-			throw "Can't use " + path + " because it is reserved for config file";
+			throw new RepoException('Can\'t use $path because it is reserved for config file');
 
 		safeDir(path);
 		File.saveContent(configFile, path);
@@ -103,7 +103,7 @@ class RepoManager {
 			// on unixes, try to read system-wide config
 			rep = try File.getContent("/etc/.haxelib").trim() catch (_:Dynamic) null;
 			if (rep == null)
-				throw "This is the first time you are running haxelib. Please run `haxelib setup` first";
+				throw new RepoException("This is the first time you are running haxelib. Please run `haxelib setup` first");
 		} else {
 			// on windows, try to use haxe installation path
 			rep = getWindowsDefaultGlobalRepositoryPath();
@@ -111,7 +111,7 @@ class RepoManager {
 				try
 					safeDir(rep)
 				catch (e:Dynamic)
-					throw 'Error accessing Haxelib repository: $e';
+					throw new RepoException('Error accessing Haxelib repository: $e');
 		}
 
 		return rep;
