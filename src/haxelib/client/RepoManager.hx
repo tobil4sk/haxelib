@@ -16,7 +16,7 @@ class RepoException extends haxe.Exception {}
 
 /** Manager for the location of the haxelib database. **/
 class RepoManager {
-	static final REPNAME = "lib";
+	static final REPONAME = "lib";
 	static final REPODIR = ".haxelib";
 
 	/** Returns the default path for the global directory. **/
@@ -25,10 +25,10 @@ class RepoManager {
 			return getWindowsDefaultGlobalRepositoryPath();
 
 		return if (FileSystem.exists("/usr/share/haxe")) // for Debian
-			'/usr/share/haxe/$REPNAME'
+			'/usr/share/haxe/$REPONAME'
 		else if (Sys.systemName() == "Mac") // for newer OSX, where /usr/lib is not writable
-			'/usr/local/lib/haxe/$REPNAME'
-		else '/usr/lib/haxe/$REPNAME'; // for other unixes
+			'/usr/local/lib/haxe/$REPONAME'
+		else '/usr/lib/haxe/$REPONAME'; // for other unixes
 	}
 
 	/**
@@ -169,7 +169,7 @@ class RepoManager {
 	static function getWindowsDefaultGlobalRepositoryPath():String {
 		final haxepath = Sys.getEnv("HAXEPATH");
 		if (haxepath != null)
-			return Path.join([haxepath.trim(), REPNAME]);
+			return Path.join([haxepath.trim(), REPONAME]);
 		return Path.join([Path.directory(getConfigFile()), "haxelib"]);
 	}
 
