@@ -26,6 +26,7 @@ import sys.FileSystem;
 using StringTools;
 
 class FsUtils {
+	public static final IS_WINDOWS = (Sys.systemName() == "Windows");
     /**
       recursively follow symlink
       TODO: this method does not (yet) work on Windows
@@ -49,7 +50,7 @@ class FsUtils {
     public static function isSamePath(a:String, b:String):Bool {
         a = Path.normalize(a);
         b = Path.normalize(b);
-        if (Main.IS_WINDOWS) { // paths are case-insensitive on Windows
+        if (IS_WINDOWS) { // paths are case-insensitive on Windows
             a = a.toLowerCase();
             b = b.toLowerCase();
         }
@@ -95,7 +96,7 @@ class FsUtils {
             if (isBrokenSymlink(path)) {
                 safeDelete(path);
             } else if (FileSystem.isDirectory(path)) {
-                if (!Main.IS_WINDOWS) {
+                if (!IS_WINDOWS) {
                     // try to delete it as a file first - in case of path
                     // being a symlink, it will success
                     if (!safeDelete(path))
@@ -116,7 +117,7 @@ class FsUtils {
             FileSystem.deleteFile(file);
             return true;
         } catch (e:Dynamic) {
-            if (Main.IS_WINDOWS) {
+            if (IS_WINDOWS) {
                 try {
                     Sys.command("attrib", ["-R", file]);
                     FileSystem.deleteFile(file);
@@ -138,7 +139,7 @@ class FsUtils {
 
 	public static function getHomePath():String {
 		var home:String = null;
-		if (Main.IS_WINDOWS) {
+		if (IS_WINDOWS) {
 			home = Sys.getEnv("USERPROFILE");
 			if (home == null) {
 				var drive = Sys.getEnv("HOMEDRIVE");

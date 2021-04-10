@@ -21,7 +21,7 @@ class RepoManager {
 
 	/** Returns the default path for the global directory. **/
 	public static function getSuggestedGlobalRepositoryPath():String {
-		if (Main.IS_WINDOWS)
+		if (IS_WINDOWS)
 			return getWindowsDefaultGlobalRepositoryPath();
 
 		return if (FileSystem.exists("/usr/share/haxe")) // for Debian
@@ -107,7 +107,7 @@ class RepoManager {
 		if (rep != null)
 			return rep;
 
-		if (!Main.IS_WINDOWS) {
+		if (!IS_WINDOWS) {
 			// on unixes, try to read system-wide config
 			rep = try File.getContent("/etc/.haxelib").trim() catch (_:Dynamic) null;
 			if (rep == null)
