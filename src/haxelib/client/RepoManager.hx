@@ -50,7 +50,7 @@ class RepoManager {
 	**/
 	static function getLocalRepository(dir:String):Null<String> {
 		var dir = FileSystem.absolutePath(dir);
-		while (dir != null) {
+		while (dir != "") {
 			final repo = Path.join([dir, REPODIR]);
 			if (FileSystem.exists(repo) && FileSystem.isDirectory(repo))
 				return repo;
