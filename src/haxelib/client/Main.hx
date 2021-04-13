@@ -155,11 +155,11 @@ class ProgressIn extends haxe.io.Input {
 }
 
 class Main {
-	static inline var HAXELIB_LIBNAME = "haxelib";
+	static final HAXELIB_LIBNAME = "haxelib";
 
-	static var VERSION:SemVer = SemVer.ofString(getHaxelibVersion());
-	static var VERSION_LONG:String = getHaxelibVersionLong();
-	static var SERVER = {
+	static final VERSION:SemVer = SemVer.ofString(getHaxelibVersion());
+	static final VERSION_LONG:String = getHaxelibVersionLong();
+	static final SERVER = {
 		protocol : "https",
 		host : "lib.haxe.org",
 		port : 443,
@@ -211,7 +211,7 @@ class Main {
 			debug: allSettings.debug,
 			quiet: allSettings.quiet,
 			flat: allSettings.flat,
-			global: allSettings.globall,
+			global: allSettings.global,
 			system: allSettings.system,
 			skipDependencies: allSettings.skipDependencies
 		};
