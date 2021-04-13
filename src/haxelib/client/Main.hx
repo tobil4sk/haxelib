@@ -699,11 +699,11 @@ class Main {
 			switch(prj){
 				case hxml if (hxml.endsWith(".hxml")):
 					// *.hxml provided, install all libraries/versions in this hxml file
-					installFromHxml(rep, prj);
+					installFromHxml(rep, hxml);
 					return;
 				case zip if (zip.endsWith(".zip")):
 					// *.zip provided, install zip as haxe library
-					doInstallFile(rep, prj, true, true);
+					doInstallFile(rep, zip, true, true);
 					return;
 				case jsonPath if(jsonPath.endsWith("haxelib.json")):
 					installFromHaxelibJson(rep, jsonPath);
