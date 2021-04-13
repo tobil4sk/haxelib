@@ -685,9 +685,9 @@ class Main {
 	}
 
 	function install() {
-		var rep = getRepository();
+		final rep = getRepository();
 
-		var prj = getArgument("Library name or hxml file:");
+		final prj = getArgument("Library name or hxml file");
 
 		// No library given, install libraries listed in *.hxml in given directory
 		if( prj == "all") {
