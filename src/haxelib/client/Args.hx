@@ -114,7 +114,7 @@ class Args {
 		final settings = {};
 
 		function set<T>(name:String, value:T) {
-			Reflect.setField(settings, name, value);
+			Reflect.setField(settings, dashSplitToCamel(name), value);
 		}
 
 		for(flag in FLAGS)
