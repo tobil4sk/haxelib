@@ -203,7 +203,7 @@ class Main {
 
 		updateCwd(allSettings.cwd);
 
-		final siteInfo = initRemote(allSettings.notimeout, allSettings.R);
+		final siteInfo = initRemote(allSettings.noTimeout, allSettings.remote);
 		siteUrl = siteInfo.url;
 		site = siteInfo.site;
 

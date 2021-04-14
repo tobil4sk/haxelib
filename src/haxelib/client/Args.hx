@@ -6,17 +6,9 @@ using StringTools;
 
 class ParsingFail extends haxe.Exception {}
 
-private final splitDash = ~/-[A-Za-z]/g;
+private final splitDash = ~/-([a-z])/g;
 private inline function dashSplitToCamel(s:String) {
-	return splitDash.map(s, (r) -> r.matched(0).toUpperCase().substr(1));
-}
-
-private function parseSwitch(s:String):Null<String> {
-	if (s.startsWith('--'))
-		return s.substr(2);
-	if (s.startsWith('-'))
-		return s.substr(1);
-	return null;
+	return splitDash.map(s, (r) -> r.matched(1).toUpperCase());
 }
 
 class Args {
@@ -30,10 +22,25 @@ class Args {
 		"system",
 		"skip-dependencies",
 		// hidden
-		"notimeout"
+		"no-timeout"
 	];
 
-	static final ABOUT_FLAGS = [
+	static final MUTUALLY_EXCLUSIVE_FLAGS = [
+		["quiet", "debug"],
+		["always", "never"]
+	];
+	static final OPTIONS = ["remote"];
+	/** Array of options that can be put in more than once**/
+	static final REPEATED_OPTIONS = ["cwd"];
+	// just because this is how --cwd worked before
+
+	static final SWITCH_ALIASES = [
+		"R" => "remote",
+		"notimeout" => "no-timeout"
+	];
+
+	// hidden switches are just not given an entry here
+	static final ABOUT_SWITCHES = [
 		"global" => "force global repo if a local one exists",
 		"debug" => "run in debug mode, imply not --quiet",
 		"quiet" => "print fewer messages, imply not --debug",
@@ -43,15 +50,6 @@ class Args {
 		"system" => "run bundled haxelib version instead of latest update",
 		"skip-dependencies" => "do not install dependencies",
 	];
-
-	static final MUTUALLY_EXCLUSIVE_FLAGS = [
-		["quiet", "debug"],
-		["always", "never"]
-	];
-	static final OPTIONS = ["R"];
-	/** Array of options that can be put in more than once**/
-	static final REPEATED_OPTIONS = ["cwd"];
-	// just because this is how --cwd worked before
 
 	final originalArgs:Array<String>;
 
@@ -103,6 +101,23 @@ class Args {
 		restIterator = rest.iterator();
 	}
 
+	static final twoDash = ~/^--(.{2,})$/;
+	static final singleDash = ~/^-([^-].*)$/; // ~/^-([^-])$/ to only match single characters
+	/** Strips dashes off switch `s`, and gets its alias if one exists **/
+	static function parseSwitch(s:String):Null<String> {
+		final stripped = {
+			if (twoDash.match(s))
+				twoDash.matched(1)
+			else if (singleDash.match(s))
+				singleDash.matched(1);
+			else
+				return null; // not a switch, exit function
+		}
+		if (SWITCH_ALIASES.exists(stripped))
+			return SWITCH_ALIASES[stripped];
+		return stripped;
+	}
+
 	function validate() {
 		// check if both mutually exclusive flags are present
 		for (pair in MUTUALLY_EXCLUSIVE_FLAGS)
@@ -151,12 +166,12 @@ class Args {
 	public static function getSwitchInfo(): Array<{name:String, description:String}>{
 		final info = [];
 		// flags to get settings on
-		final visibleSwitches = [for (key in ABOUT_FLAGS.keys()) key];
+		final visibleSwitches = [for (key in ABOUT_SWITCHES.keys()) key];
 		for(flag in FLAGS){
 			if(visibleSwitches.contains(flag)){
 				info.push({
 					name: flag,
-					description: ABOUT_FLAGS[flag]
+					description: ABOUT_SWITCHES[flag]
 				});
 			}
 		}
