@@ -61,7 +61,7 @@ class Args {
 	final restIterator:ArrayIterator<String>;
 
 	public function new(args:Array<String>){
-		originalArgs = args;
+		originalArgs = args.copy();
 		final rest = [];
 
 		var arg:String;
