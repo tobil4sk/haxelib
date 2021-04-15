@@ -239,6 +239,15 @@ class Data {
 	public static var REPOSITORY(default, null) = "files/3.0";
 	public static var alphanum(default, null) = ~/^[A-Za-z0-9_.-]+$/;
 
+	public static function isSafe(value:String){
+		return alphanum.match(value);
+	}
+	/**
+			Returns `name` with dots replaced with commas.
+	 **/
+	public static function makeSafe(value:String){
+		return value.replace(".", ",");
+	}
 
 	public static function safe( name : String ) {
 		if( !alphanum.match(name) )
@@ -246,6 +255,7 @@ class Data {
 		return name.split(".").join(",");
 	}
 
+	/** Returns `name` with commas replaced with dots.**/
 	public static function unsafe( name : String ) {
 		return name.split(",").join(".");
 	}

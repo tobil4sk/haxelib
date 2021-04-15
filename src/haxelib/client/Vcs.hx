@@ -28,8 +28,9 @@ interface IVcs {
 	var name(default, null):String;
 	var directory(default, null):String;
 	var executable(default, null):String;
+	final flat:Bool;
+
 	var available(get, null):Bool;
-	var settings(default, null):Settings;
 
 	/**
 		Clone repo into `libPath`.
@@ -57,72 +58,56 @@ enum VcsError {
 	CantCheckoutVersion(vcs:Vcs, version:String, stderr:String);
 }
 
-
-typedef Settings = {
-	@:optional var flat:Bool;
-	@:optional var debug:Bool;
-	@:optional var quiet:Bool;
-}
-
-
 class Vcs implements IVcs {
 	static var reg:Map<VcsID, Vcs>;
 
 	public var name(default, null):String;
 	public var directory(default, null):String;
 	public var executable(default, null):String;
-	public var settings(default, null):Settings;
+	public final flat:Bool;
 
 	public var available(get, null):Bool;
 
 	var availabilityChecked = false;
 	var executableSearched = false;
 
-	public static function initialize(settings:Settings) {
+	public static function initialize(flat:Bool) {
 		if (reg == null) {
 			reg = [
-				VcsID.Git => new Git(settings),
-				VcsID.Hg => new Mercurial(settings)
+				VcsID.Git => new Git(flat),
+				VcsID.Hg => new Mercurial(flat)
 			];
 		} else {
 			if (reg.get(VcsID.Git) == null)
-				reg.set(VcsID.Git, new Git(settings));
+				reg.set(VcsID.Git, new Git(flat));
 			if (reg.get(VcsID.Hg) == null)
-				reg.set(VcsID.Hg, new Mercurial(settings));
+				reg.set(VcsID.Hg, new Mercurial(flat));
 		}
 	}
 
 
-	function new(executable:String, directory:String, name:String, settings:Settings) {
+	function new(executable:String, directory:String, name:String, flat:Bool) {
 		this.name = name;
 		this.directory = directory;
 		this.executable = executable;
-		this.settings = {
-			flat: settings.flat != null ? settings.flat : false,
-			debug: settings.debug != null ? settings.debug : false,
-			quiet: settings.quiet != null ? settings.quiet : false
-		}
-
-		if (settings.debug) {
-			this.settings.quiet = false;
-		}
+		this.flat = flat;
 	}
 
 
-	public static function get(id:VcsID, settings:Settings):Null<Vcs> {
-		initialize(settings);
+	public static function get(id:VcsID, flat:Bool = false):Null<Vcs> {
+		initialize(flat);
 		return reg.get(id);
 	}
 
-	static function set(id:VcsID, vcs:Vcs, settings:Settings, ?rewrite:Bool):Void {
-		initialize(settings);
+	static function set(id:VcsID, vcs:Vcs, flat:Bool, ?rewrite:Bool):Void {
+		initialize(flat);
 		var existing = reg.get(id) != null;
 		if (!existing || rewrite)
 			reg.set(id, vcs);
 	}
 
-	public static function getVcsForDevLib(libPath:String, settings:Settings):Null<Vcs> {
-		initialize(settings);
+	public static function getVcsForDevLib(libPath:String, flat:Bool):Null<Vcs> {
+		initialize(flat);
 		for (k in reg.keys()) {
 			if (FileSystem.exists(libPath + "/" + k) && FileSystem.isDirectory(libPath + "/" + k))
 				return reg.get(k);
@@ -134,8 +119,7 @@ class Vcs implements IVcs {
 		switch (commandResult) {
 			case {code: 0}: //pass
 			case {code: code, out:out}:
-				if (!settings.debug)
-					Sys.stderr().writeString(out);
+				Cli.showDebugMessage(out);
 				Sys.exit(code);
 		}
 	}
@@ -154,10 +138,10 @@ class Vcs implements IVcs {
         }
         var out = p.stdout.readAll().toString();
         var err = p.stderr.readAll().toString();
-        if (settings.debug && out != "")
-        	Sys.println(out);
-        if (settings.debug && err != "")
-        	Sys.stderr().writeString(err);
+        if (out != "")
+        	Cli.showDebugMessage(out);
+        if (err != "")
+        	Cli.showDebugError(err);
         var code = p.exitCode();
         var ret = {
             code: code,
@@ -199,8 +183,8 @@ class Vcs implements IVcs {
 
 class Git extends Vcs {
 
-	public function new(settings:Settings)
-		super("git", "git", "Git", settings);
+	public function new(flat = false)
+		super("git", "git", "Git", flat);
 
 	override function checkExecutable():Bool {
 		// with `help` cmd because without any cmd `git` can return exit-code = 1.
@@ -250,8 +234,7 @@ class Git extends Vcs {
 			if (Cli.ask("Reset changes to " + libName + " " + name + " repo so we can pull latest version")) {
 				sure(command(executable, ["reset", "--hard"]));
 			} else {
-				if (!settings.quiet)
-					Sys.println(name + " repo left untouched");
+				Cli.showOptional(name + " repo left untouched");
 				return false;
 			}
 		}
@@ -276,7 +259,7 @@ class Git extends Vcs {
 
 		var vcsArgs = ["clone", url, libPath];
 
-		if (settings == null || !settings.flat)
+		if (!flat)
 			vcsArgs.push('--recursive');
 
 		//TODO: move to Vcs.run(vcsArgs)
@@ -305,8 +288,8 @@ class Git extends Vcs {
 
 class Mercurial extends Vcs {
 
-	public function new(settings:Settings)
-		super("hg", "hg", "Mercurial", settings);
+	public function new(flat = false)
+		super("hg", "hg", "Mercurial", flat);
 
 	override function searchExecutable():Void {
 		super.searchExecutable();
@@ -337,20 +320,18 @@ class Mercurial extends Vcs {
 		summary = summary.substr(summary.lastIndexOf("\n") + 1);
 		// we don't know any about locale then taking only Digit-exising:s
 		var changed = ~/(\d)/.match(summary);
-		if (changed && !settings.quiet)
+		if (changed)
 			// print new pulled changesets:
-			Sys.println(summary);
+			Cli.showOptional(summary);
 
 
 		if (diff.code + status.code + diff.out.length + status.out.length != 0) {
-			if (!settings.quiet)
-				Sys.println(diff.out);
+			Cli.showOptional(diff.out);
 			if (Cli.ask("Reset changes to " + libName + " " + name + " repo so we can update to latest version")) {
 				sure(command(executable, ["update", "--clean"]));
 			} else {
 				changed = false;
-				if (!settings.quiet)
-					Sys.println(name + " repo left untouched");
+				Cli.showOptional(name + " repo left untouched");
 			}
 		} else if (changed) {
 			sure(command(executable, ["update"]));

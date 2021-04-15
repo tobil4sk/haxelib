@@ -4,6 +4,7 @@ import sys.FileSystem;
 import haxe.io.*;
 
 import haxelib.client.Vcs;
+import haxelib.client.Cli;
 
 class TestVcsNotFound extends TestBase
 {
@@ -33,6 +34,7 @@ class TestVcsNotFound extends TestBase
 		FileSystem.createDirectory(REPO_DIR);
 
 		Sys.setCwd(REPO_DIR);
+		Cli.set(null, Quiet);
 	}
 
 	override public function tearDown():Void
@@ -41,6 +43,7 @@ class TestVcsNotFound extends TestBase
 		Sys.setCwd(CWD);
 
 		deleteDirectory(Path.join([CWD, REPO_ROOT, REPO_DIR]));
+		Cli.set(null, None);
 	}
 
 	//----------------- tests -------------------//
@@ -98,12 +101,12 @@ class TestVcsNotFound extends TestBase
 
 	inline function getHg():Vcs
 	{
-		return new WrongHg({quiet: true});
+		return new WrongHg();
 	}
 
 	inline function getGit():Vcs
 	{
-		return new WrongGit({quiet: true});
+		return new WrongGit();
 	}
 }
 
@@ -111,12 +114,12 @@ class TestVcsNotFound extends TestBase
 
 class WrongHg extends Mercurial
 {
-	public function new(settings:Settings)
+	public function new()
 	{
-		super(settings);
-		this.directory = "no-hg";
-		this.executable = "no-hg";
-		this.name = "Mercurial-not-found";
+		super();
+		directory = "no-hg";
+		executable = "no-hg";
+		name = "Mercurial-not-found";
 	}
 
 	// copy of Mercurial.searchExecutablebut have a one change - regexp.
@@ -143,12 +146,13 @@ class WrongHg extends Mercurial
 
 class WrongGit extends Git
 {
-	public function new(settings:Settings)
+
+	public function new()
 	{
-		super(settings);
-		this.directory = "no-git";
-		this.executable = "no-git";
-		this.name = "Git-not-found";
+		super();
+		directory = "no-git";
+		executable = "no-git";
+		name = "Git-not-found";
 	}
 
 	// copy of Mercurial.searchExecutablebut have a one change - regexp.

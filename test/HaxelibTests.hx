@@ -1,5 +1,6 @@
 import haxe.io.Path;
 import haxelib.client.Vcs.VcsID;
+import haxelib.client.Cli;
 import haxe.unit.TestRunner;
 import sys.*;
 import sys.io.*;
@@ -44,6 +45,8 @@ class HaxelibTests {
 	}
 
 	static function main():Void {
+		Cli.set(null, Quiet);
+
 		var r = new TestRunner();
 
 		r.add(new TestSemVer());
@@ -71,6 +74,7 @@ class HaxelibTests {
 
 		r.add(new TestInstall());
 		r.add(new TestArgs());
+		r.add(new TestRepoManager());
 
 		var success = r.run();
 		Sys.exit(success ? 0 : 1);

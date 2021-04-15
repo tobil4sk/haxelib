@@ -10,10 +10,9 @@ using IntegrationTests;
 class TestSetup extends IntegrationTests {
 	function testCleanEnv():Void {
 		// remove .haxelib to simulate an enviroment that haven't `haxelib setup` yet
-        var config = Main.getConfigFile();
-        sys.FileSystem.deleteFile(config);
+        RepoManager.clearSetup();
 
-		var installResult = haxelib(["setup", originalRepo]).result();
+		final installResult = haxelib(["setup", originalRepo]).result();
 		assertEquals(0, installResult.code);
 	}
 }

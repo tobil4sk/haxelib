@@ -49,6 +49,7 @@ class TestVcs extends TestBase
 		FileSystem.createDirectory(REPO_DIR);
 
 		Sys.setCwd(REPO_DIR);
+		Cli.set(null, Quiet);
 	}
 
 	override public function tearDown():Void
@@ -57,6 +58,7 @@ class TestVcs extends TestBase
 		Sys.setCwd(CWD);
 
 		deleteDirectory(Path.join([CWD, REPO_ROOT, REPO_DIR]));
+		Cli.set(null, None);
 	}
 
 	//----------------- tests -------------------//
@@ -64,8 +66,8 @@ class TestVcs extends TestBase
 
 	public function testGetVcs():Void
 	{
-		assertTrue(Vcs.get(id, {quiet: true}) != null);
-		assertTrue(Vcs.get(id, {quiet: true}).name == vcsName);
+		assertTrue(Vcs.get(id) != null);
+		assertTrue(Vcs.get(id).name == vcsName);
 	}
 
 	public function testAvailable():Void
@@ -80,7 +82,7 @@ class TestVcs extends TestBase
 		var vcs = getVcs();
 		testCloneSimple();
 
-		assertEquals(vcs, Vcs.get(id, {quiet: true}));
+		assertEquals(vcs, Vcs.get(id));
 	}
 
 	public function testCloneSimple():Void
@@ -192,7 +194,7 @@ class TestVcs extends TestBase
 		File.saveContent("file", "new file \"file\" with content");
 
 		//Hack: set the default answer:
-		Cli.defaultAnswer = true;
+		Cli.set(true);
 
 		// update to HEAD:
 		// in this case `libName` can get any value:
@@ -222,7 +224,7 @@ class TestVcs extends TestBase
 		File.saveContent("file", "new file \"file\" with content");
 
 		//Hack: set the default answer:
-		Cli.defaultAnswer = false;
+		Cli.set(false);
 
 		// update to HEAD:
 		// in this case `libName` can get any value:
@@ -241,6 +243,6 @@ class TestVcs extends TestBase
 
 	inline function getVcs():Vcs
 	{
-		return Vcs.get(id, {quiet: true});
+		return Vcs.get(id);
 	}
 }
