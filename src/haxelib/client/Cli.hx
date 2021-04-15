@@ -127,29 +127,28 @@ private class ProgressIn extends haxe.io.Input {
 }
 
 class Cli {
-	static var defaultAnswer:Null<Bool> = null;
-	static var mode = None;
+	var defaultAnswer:Null<Bool> = null;
+	final mode = None;
 
-	public static function set(defaultAnswer:Null<Bool>, ?mode:OutputMode){
-		Cli.defaultAnswer = defaultAnswer;
-		if(mode != null)
-			Cli.mode = mode;
+	public function new(defaultAnswer:Null<Bool>, mode = None){
+		this.defaultAnswer = defaultAnswer;
+		this.mode = mode;
 	}
 
-	public static function createDownloadOutput(out:FileOutput, currentSize:Int):haxe.io.Output {
+	public function createDownloadOutput(out:FileOutput, currentSize:Int):haxe.io.Output {
 		if (mode == Quiet)
 			return out;
 		return new ProgressOut(out, currentSize);
 	}
 
-	public static function createUploadInput(data:haxe.io.Bytes):haxe.io.Input {
+	public function createUploadInput(data:haxe.io.Bytes):haxe.io.Input {
 		final dataBytes = new haxe.io.BytesInput(data);
 		if (mode == Quiet)
 			return dataBytes;
 		return new ProgressIn(dataBytes, data.length);
 	}
 
-	public static function ask(question:String):Bool {
+	public function ask(question:String):Bool {
 		if (defaultAnswer != null)
 			return defaultAnswer;
 
@@ -169,12 +168,12 @@ class Cli {
 		return false;
 	}
 
-	public static function getInput(prompt:String) {
+	public function getInput(prompt:String) {
 		Sys.print('$prompt : ');
 		return Sys.stdin().readLine();
 	}
 
-	public static function getSecretInput(prompt:String){
+	public function getSecretInput(prompt:String){
 		Sys.print('$prompt : ');
 		final s = new StringBuf();
 		do {
@@ -190,18 +189,18 @@ class Cli {
 		return s.toString();
 	}
 
-	public static inline function print(str)
+	public inline function print(str)
 		Sys.println(str);
 
 	/** Outputs `message` to standard output if not in quiet mode **/
-	public static function showOptional(message:String) {
+	public function showOptional(message:String) {
 		if (mode == Quiet)
 			return;
 		Sys.println(message);
 	}
 
 	/** Prints a debug message, and adds a newline, only when in debug mode **/
-	public static function showDebugMessage(message:String) {
+	public function showDebugMessage(message:String) {
 		if (mode != Debug)
 			return;
 		Sys.println('$message\n');
@@ -210,23 +209,23 @@ class Cli {
 	/** Prints a debug message that will be overwritten by the next message,
 		only when in debug mode.
 	 **/
-	public static function showDebugOverwritable(message:String){
+	public function showDebugOverwritable(message:String){
 		if(mode != Debug)
 			return;
 		Sys.println('$message\r');
 	}
 
-	public static function showWarning(message:String){
+	public function showWarning(message:String){
 		Sys.println('Warning: $message\n');
 	}
 
 	/** Adds an error message to the error output **/
-	public static function showError(message:String){
+	public function showError(message:String){
 		Sys.stderr().writeString('Error: $message\n');
 	}
 
 	/** Adds an error message to the error output only if in debug mode **/
-	public static function showDebugError(message:String) {
+	public function showDebugError(message:String) {
 		if (mode != Debug)
 			return;
 		Sys.stderr().writeString('Error: $message\n');

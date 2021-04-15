@@ -78,6 +78,7 @@ class Main {
 		system : Bool,
 		skipDependencies : Bool,
 	};
+	final cli:Cli;
 	final commands : List<{ name : String, doc : String, f : Void -> Void, net : Bool, cat : CommandCategory }>;
 
 	final siteUrl : String;
@@ -87,21 +88,17 @@ class Main {
 	function new(argsArray:Array<String>, isHaxelibRun:Bool) {
 		this.isHaxelibRun = isHaxelibRun;
 
-		try {
-			args = new Args(argsArray);
-		}catch(e:ParsingFail) {
-			Cli.showError(e.message);
-			Sys.exit(1);
-		}
+		args = new Args(argsArray);
+
 		final allSettings = args.getAllSettings();
 
 		// argument parsing takes care of mutual exclusivity
-		final defaultAnswer =
+		cli = new Cli(
 			if (!allSettings.always && !allSettings.never) null // neither specified
-			else (allSettings.always && !allSettings.never); // boolean logic
-		final cliMode:OutputMode = if (allSettings.debug) Debug else if (allSettings.quiet) Quiet else None;
+			else (allSettings.always && !allSettings.never), // boolean logic
 
-		Cli.set(defaultAnswer, cliMode);
+			if (allSettings.debug) Debug else if (allSettings.quiet) Quiet else None
+		);
 
 		updateCwd(allSettings.cwd);
 
@@ -1559,7 +1556,7 @@ class Main {
 		} catch(e:Dynamic) {
 			if(Sys.args().contains("--debug"))
 				Util.rethrow(e);
-			Cli.showError(Std.string(e));
+			Sys.stderr().writeString(Std.string(e));
 		}
 	}
 
