@@ -5,120 +5,177 @@ import haxelib.client.Args;
 
 class TestArgs extends TestCase {
 
+	public function testPriorityFlags() {
+		final priorityFlags = Args.extractPriorityFlags([
+					"--debug", "--global", "--system", "--skip-dependencies", "--no-timeout",
+					"--flat", "--always", "version"
+			]);
+		// priority
+		assertTrue(priorityFlags.contains(Debug));
+		assertTrue(priorityFlags.contains(Global));
+		assertTrue(priorityFlags.contains(System));
+
+		// non priority
+		assertFalse(priorityFlags.contains(SkipDependencies));
+		assertFalse(priorityFlags.contains(NoTimeout));
+		assertFalse(priorityFlags.contains(Flat));
+		assertFalse(priorityFlags.contains(Always));
+
+		// should not give any errors, even with other invalid arguments
+		try {
+			Args.extractPriorityFlags([
+				"--system",
+				"invalidcommand",
+				"--cwd"
+			]);
+			assertTrue(true);
+		} catch(e:haxe.Exception){
+			assertTrue(false);
+		}
+	}
+
 	public function testFlags() {
-		final settings = new Args([
+		final flags = Args.extractAll([
 			"--debug", "--global", "--system", "--skip-dependencies", "--no-timeout",
-			"--flat", "--always"
-		]).getAllSettings();
+			"--flat", "--always", "version"
+		]).flags;
+		// given
+		assertTrue(flags.contains(Debug));
+		assertTrue(flags.contains(Global));
+		assertTrue(flags.contains(System));
+		assertTrue(flags.contains(SkipDependencies));
+		assertTrue(flags.contains(NoTimeout));
+		assertTrue(flags.contains(Flat));
+		assertTrue(flags.contains(Always));
 
-		assertTrue(settings.debug);
-		assertTrue(settings.global);
-		assertTrue(settings.system);
-		assertTrue(settings.skipDependencies);
-		assertTrue(settings.noTimeout);
-		assertTrue(settings.flat);
-		assertTrue(settings.always);
-
-		assertFalse(settings.quiet);
-		assertFalse(settings.never);
+		// not given
+		assertFalse(flags.contains(Quiet));
+		assertFalse(flags.contains(Never));
 	}
 
 	public function testMutuallyExclusiveFlags() {
 		// debug and quiet
-		assertFalse(isValid(["--debug", "--quiet"]));
-		assertFalse(isValid(["--quiet", "--debug"]));
+		assertFalse(areSwitchesValid(["--debug", "--quiet", "version"]));
+		assertFalse(areSwitchesValid(["--quiet", "--debug", "version"]));
 
 		// always and never
-		assertFalse(isValid(["--always", "--never"]));
-		assertFalse(isValid(["--never", "--always"]));
+		assertFalse(areSwitchesValid(["--always", "--never", "version"]));
+		assertFalse(areSwitchesValid(["--never", "--always", "version"]));
 
 		// everything
-		assertFalse(isValid(["--never", "--always", "--debug", "--quiet"]));
+		assertFalse(areSwitchesValid(["--never", "--always", "--debug", "--quiet", "version"]));
 	}
 
-	function isValid(args:Array<String>):Bool {
+	function areSwitchesValid(args:Array<String>):Bool {
 		try {
-			new Args(args);
+			Args.extractAll(args);
 			return true;
-		} catch (e:ParsingFail) {
+		} catch (e:SwitchError) {
 			return false;
 		}
 	}
 
 	public function testOptions() {
 		// one value given
-		final settings = new Args(["--remote", "remotePath"]).getAllSettings();
-		assertEquals("remotePath", settings.remote);
+		final remote = Args.extractAll(["--remote", "remotePath", "version"]).options[Remote];
+		assertEquals("remotePath", remote);
 
 		// option without value should give error
-		assertFalse(isValid(["--remote"]));
+		assertFalse(areSwitchesValid(["version", "--remote"]));
 
 		// when a normal option is repeated, should just give the last one.
-		final settings = new Args(["--remote", "remotePath", "--remote", "otherPath"]).getAllSettings();
-		assertEquals("otherPath", settings.remote);
+		final remote = Args.extractAll(["--remote", "remotePath", "--remote", "otherPath", "version"]).options[Remote];
+		assertEquals("otherPath", remote);
 
 		// not included
-		final settings = new Args([]).getAllSettings();
-		assertEquals(null, settings.remote);
+		final remote = Args.extractAll(["version"]).options[Remote];
+		assertEquals(null, remote);
 	}
 
 	public function testRepeatedOptions() {
 		// test once
-		final dirs = new Args(["--cwd", "../path"]).getAllSettings().cwd;
+		final dirs = Args.extractAll(["--cwd", "../path", "version"]).repeatedOptions[Cwd];
 		assertEquals(1, dirs.length);
 		assertEquals("../path", dirs[0]);
 
 		// multiple times
-		final dirs = new Args(["--cwd", "../path", "--cwd", "path2"]).getAllSettings().cwd;
+		final dirs = Args.extractAll(["--cwd", "../path", "--cwd", "path2", "version"]).repeatedOptions[Cwd];
 		assertEquals(2, dirs.length);
 		assertEquals("../path", dirs[0]);
 		assertEquals("path2", dirs[1]);
 
+		// no value given is not valid
+		assertFalse(areSwitchesValid(["version", "--cwd"]));
+
 		// no value given
-		final dirs = new Args([]).getAllSettings().cwd;
+		final dirs = Args.extractAll(["version"]).repeatedOptions[Cwd];
 		assertEquals(null, dirs);
 	}
 
 	public function testSingleDashes() {
 		// flags
-		final settings = new Args([
-			"-debug", "-skip-dependencies"
-		]).getAllSettings();
+		final flags = Args.extractAll([
+			"-debug", "-skip-dependencies", "version"
+		]).flags;
 
-		assertTrue(settings.debug);
-		assertTrue(settings.skipDependencies);
+		assertTrue(flags.contains(Debug));
+		assertTrue(flags.contains(SkipDependencies));
 		// options
-		final settings = new Args(["-cwd", "path", "-remote", "remotePath"]).getAllSettings();
+		final argsInfo = Args.extractAll(["-cwd", "path", "-remote", "remotePath", "version"]);
 
-		assertEquals("path", settings.cwd[0]);
-		assertEquals("remotePath", settings.remote);
+		assertEquals("path", argsInfo.repeatedOptions[Cwd][0]);
+		assertEquals("remotePath", argsInfo.options[Remote]);
 
 		// mixing single and double
-		final directories = new Args(["-cwd", "path", "--cwd", "otherPath"]).getAllSettings().cwd;
+		final directories = Args.extractAll(["-cwd", "path", "--cwd", "otherPath", "version"]).repeatedOptions[Cwd];
 
 		assertEquals("path", directories[0]);
 		assertEquals("otherPath", directories[1]);
 	}
 
 	public function testAliases() {
-		final settings = new Args(["-R", "remotePath", "--notimeout"]).getAllSettings();
+		final argsInfo = Args.extractAll(["-R", "remotePath", "--notimeout", "version"]);
 
-		assertEquals("remotePath", settings.remote);
-		assertTrue(settings.noTimeout);
+		assertEquals("remotePath", argsInfo.options[Remote]);
+		assertTrue(argsInfo.flags.contains(NoTimeout));
+	}
+
+	public function testCommands() {
+		// basic
+		assertEquals(Path, Args.extractAll(["path", "libname", "--debug"]).command);
+		assertEquals(Help, Args.extractAll(["help"]).command);
+		assertEquals(Search, Args.extractAll(["search", "hello"]).command);
+
+		// aliased
+		assertEquals(Update, Args.extractAll(["upgrade"]).command);
+
+		// no command
+		assertFalse(isCommandValid([]));
+
+		// unknown command
+		assertFalse(isCommandValid(["hfiodsahfi"]));
+	}
+
+	function isCommandValid(args:Array<String>):Bool {
+		try {
+			Args.extractAll(args);
+			return true;
+		} catch (e:InvalidCommand) {
+			return false;
+		}
 	}
 
 	public function testCommandArguments() {
-		final args = new Args(["path", "libname", "--debug"]);
+		final args = Args.extractAll(["path", "libname", "--debug"]).mainArgs;
 
-		assertEquals("path", args.getNext());
-		assertEquals("libname", args.getNext());
+		assertEquals("libname", args[0]);
 		// ensure flag IS captured and not given here
-		assertEquals(null, args.getNext());
+		assertEquals(null, args[1]);
 
 		// test retrieving all arguments
-		final args = new Args(["path", "libname", "--debug", "otherlibname", "--always"]).getRemaining();
+		final args = Args.extractAll(["path", "libname", "--debug", "otherlibname", "--always"]).mainArgs;
 
-		final expectedArgs = ["path", "libname", "otherlibname"];
+		final expectedArgs = ["libname", "otherlibname"];
 
 		assertEquals(expectedArgs.length, args.length);
 
@@ -129,13 +186,12 @@ class TestArgs extends TestCase {
 	}
 
 	public function testRunCommand() {
-		final args = new Args(["run", "libname", "--debug", "value"]);
+		final args = Args.extractAll(["run", "libname", "--debug", "value"]).mainArgs;
 
-		assertEquals("run", args.getNext());
-		assertEquals("libname", args.getNext());
+		assertEquals("libname", args[0]);
 		// ensure flag ISN'T captured and is still given
-		assertEquals("--debug", args.getNext());
-		assertEquals("value", args.getNext());
+		assertEquals("--debug", args[1]);
+		assertEquals("value", args[2]);
 	}
 
 }

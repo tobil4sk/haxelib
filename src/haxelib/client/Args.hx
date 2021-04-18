@@ -153,8 +153,12 @@ enum abstract RepeatedOption(String) to String {
 }
 
 class Args {
+	/**
+		Returns an array of the priority flags included in the array `args`.
 
-	/** Returns an array of the priority flags included in the array `args` **/
+		These are the flags that need to be accessed before deciding whether
+		the call is passed onto the haxelib version.
+	 **/
 	public static function extractPriorityFlags(args:Array<String>):Array<Flag> {
 		final flags = [];
 		for(arg in args) {
@@ -169,6 +173,10 @@ class Args {
 		return flags;
 	}
 
+	/**
+		Extracts all the flags, options and arguments in the array `args`,
+		and returns these in an `ArgsInfo` object.
+	 **/
 	public static function extractAll(args:Array<String>):ArgsInfo {
 		final flags:Array<Flag> = [];
 		final options: Map<Option, String> = [];
