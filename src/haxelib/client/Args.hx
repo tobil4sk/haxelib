@@ -1,7 +1,6 @@
 package haxelib.client;
 
 using StringTools;
-//using Lambda;
 
 class SwitchError extends haxe.Exception {}
 class InvalidCommand extends haxe.Exception {}
@@ -97,9 +96,16 @@ enum abstract Flag(String) to String {
 	**/
 	public static final PRIORITY = [System, Debug, Global];
 
+	static final ALIASES = ["notimeout" => NoTimeout];
+
 	static final FLAGS = Util.getValues(Flag);
 
 	public static function ofString(str:String):Null<Flag> {
+		// first check aliases
+		final alias = ALIASES.get(str);
+		if (alias != null)
+			return alias;
+
 		for (flag in FLAGS) {
 			if (cast(flag, String) == str)
 				return flag;
@@ -112,9 +118,16 @@ enum abstract Flag(String) to String {
 enum abstract Option(String) to String {
 	final Remote = "remote";
 
+	static final ALIASES = ["R" => Remote];
+
 	static final OPTIONS = Util.getValues(Option);
 
 	public static function ofString(str:String):Null<Option> {
+		// first check aliases
+		final alias = ALIASES.get(str);
+		if (alias != null)
+			return alias;
+
 		for (option in OPTIONS) {
 			if (cast(option, String) == str)
 				return option;
@@ -140,16 +153,16 @@ enum abstract RepeatedOption(String) to String {
 }
 
 class Args {
-	static final SWITCH_ALIASES:Map<String, String> = [
-		"R" => Remote,
-		"notimeout" => NoTimeout
-	];
 
 	/** Returns an array of the priority flags included in the array `args` **/
 	public static function extractPriorityFlags(args:Array<String>):Array<Flag> {
 		final flags = [];
 		for(arg in args) {
-			final flag = Flag.ofString(parseSwitch(arg));
+			final switchName = parseSwitch(arg);
+			if(switchName == null)
+				continue;
+
+			final flag = Flag.ofString(switchName);
 			if(flag != null && Flag.PRIORITY.contains(flag))
 				flags.push(flag);
 		}
@@ -176,6 +189,13 @@ class Args {
 		while (index < args.length) {
 			arg = args[index++];
 			switch (parseSwitch(arg)) {
+				case null:
+					mainArgs.push(arg);
+					// put all of them into the rest array
+					if (arg == "run")
+						while (index < args.length)
+							mainArgs.push(args[index++]);
+
 				case Flag.ofString(_) => flag if (flag != null):
 					flags.push(flag);
 
@@ -188,12 +208,6 @@ class Args {
 					repeatedOptions[rOption].push(requireNext());
 				// case invalid if(invalid != null):
 				// 	throw new ParsingFail('unknown switch $arg');
-				case _:
-					mainArgs.push(arg);
-					// put all of them into the rest array
-					if (arg == "run")
-						while (index < args.length)
-							mainArgs.push(args[index++]);
 			}
 		}
 
@@ -220,17 +234,13 @@ class Args {
 	static final singleDash = ~/^-([^-].*)$/; // ~/^-([^-])$/ to only match single characters
 	/** Strips dashes off switch `s`, and gets its alias if one exists **/
 	static function parseSwitch(s:String):Null<String> {
-		final stripped = {
+		return
 			if (twoDash.match(s))
 				twoDash.matched(1)
 			else if (singleDash.match(s))
 				singleDash.matched(1);
 			else
-				return null; // not a switch, exit function
-		}
-		if (SWITCH_ALIASES.exists(stripped))
-			return SWITCH_ALIASES[stripped];
-		return stripped;
+				null;
 	}
 
 	static final splitDash = ~/-([a-z])/g;
