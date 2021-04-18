@@ -19,17 +19,9 @@ class RepoManager {
 	static final REPONAME = "lib";
 	static final REPODIR = ".haxelib";
 
-	/** Returns the default path for the global directory. **/
-	public static function getSuggestedGlobalRepositoryPath():String {
-		if (IS_WINDOWS)
-			return getWindowsDefaultGlobalRepositoryPath();
+	static final VARIABLE_NAME = "HAXELIB_PATH";
 
-		return if (FileSystem.exists("/usr/share/haxe")) // for Debian
-			'/usr/share/haxe/$REPONAME'
-		else if (Sys.systemName() == "Mac") // for newer OSX, where /usr/lib is not writable
-			'/usr/local/lib/haxe/$REPONAME'
-		else '/usr/lib/haxe/$REPONAME'; // for other unixes
-	}
+	static final UNIX_SYSTEM_CONFIG = "/etc/.haxelib";
 
 	/**
 		Returns the path to the repository local to `dir` if one exists,
@@ -62,32 +54,48 @@ class RepoManager {
 	/**
 		Returns the global repository path, but throws an exception
 		if it does not exist or if it is not a directory.
+
+		The `HAXELIB_PATH` environment variable takes precedence over
+		the configured global repository path.
 	**/
 	public static function getGlobalRepository():String {
 		final rep = getGlobalRepositoryPath(true);
+		// TODO: Move the "run `haxelib setup`" part of the messages out of here
 		if (!FileSystem.exists(rep))
-			throw new RepoException('haxelib Repository $rep does not exist. Please run `haxelib setup` again.');
+			throw new RepoException('Haxelib Repository $rep does not exist. Please run `haxelib setup` again.');
 		else if (!FileSystem.isDirectory(rep))
-			throw new RepoException('haxelib Repository $rep exists, but is a file, not a directory. Please remove it and run `haxelib setup` again.');
+			throw new RepoException('Haxelib Repository $rep exists, but is a file, not a directory. Please remove it and run `haxelib setup` again.');
 		return Path.addTrailingSlash(rep);
 	}
 
 	/** Sets `path` as the global haxelib repository in the user's haxelib config file. **/
 	public static function saveSetup(path:String):Void {
-		final configFile = getConfigFile();
+		final configFile = getConfigFilePath();
 
 		if (isSamePath(path, configFile))
-			throw new RepoException('Can\'t use $path because it is reserved for config file');
+			throw new RepoException('Cannot use $path because it is reserved for config file');
 
 		safeDir(path);
 		File.saveContent(configFile, path);
 	}
 
 	/**
+		Returns the previous global repository path if a valid one had been
+		properly set up, otherwise returns the default path for the
+		current operating system.
+	**/
+	public static function suggestGlobalRepositoryPath() {
+		return try
+			RepoManager.getGlobalRepositoryPath()
+		catch (_:RepoException)
+			RepoManager.getSuggestedGlobalRepositoryPath();
+	}
+
+	/**
 		Returns the global Haxelib repository path, without validating
 		that it exists.
 
-		First checks HAXELIB_PATH environment variable,
+		First checks `HAXELIB_PATH` environment variable,
 		then checks the content of user config file.
 
 		If both are empty:
@@ -96,33 +104,36 @@ class RepoManager {
 		- On Windows, returns the default suggested repository path, after
 		attempting to create this directory if `create` is set to true.
 	 **/
-	public static function getGlobalRepositoryPath(create = false):String {
+	static function getGlobalRepositoryPath(create = false):String {
 		// first check the env var
-		var rep = Sys.getEnv("HAXELIB_PATH");
-		if (rep != null)
-			return rep.trim();
+		final environmentVar = Sys.getEnv(VARIABLE_NAME);
+		if (environmentVar != null)
+			return environmentVar.trim();
 
 		// try to read from user config
-		rep = try File.getContent(getConfigFile()).trim() catch (_:Dynamic) null;
-		if (rep != null)
-			return rep;
+		final userConfig = try File.getContent(getConfigFilePath()).trim() catch (_:Dynamic) null;
+		if (userConfig != null)
+			return userConfig;
 
-		if (!IS_WINDOWS) {
-			// on unixes, try to read system-wide config
-			rep = try File.getContent("/etc/.haxelib").trim() catch (_:Dynamic) null;
-			if (rep == null)
-				throw new RepoException("This is the first time you are running haxelib. Please run `haxelib setup` first");
-		} else {
+		if (IS_WINDOWS) {
 			// on windows, try to use haxe installation path
-			rep = getWindowsDefaultGlobalRepositoryPath();
+			final defaultPath = getWindowsDefaultGlobalRepositoryPath();
 			if (create)
 				try
-					safeDir(rep)
+					safeDir(defaultPath)
 				catch (e:Dynamic)
 					throw new RepoException('Error accessing Haxelib repository: $e');
+			return defaultPath;
 		}
 
-		return rep;
+		// on unixes, try to read system-wide config
+		final systemConfig =
+			try
+				File.getContent(UNIX_SYSTEM_CONFIG).trim()
+			catch (e:haxe.Exception)
+				throw new RepoException("This is the first time you are running haxelib. Please run `haxelib setup` first");
+		// TODO: Move the "run `haxelib setup`" part of the messages out of here
+		return systemConfig;
 	}
 
 	/**
@@ -155,8 +166,20 @@ class RepoManager {
 		return path;
 	}
 
-	static function getConfigFile():String {
+	static function getConfigFilePath():String {
 		return Path.join([getHomePath(), ".haxelib"]);
+	}
+
+	/** Returns the default path for the global directory. **/
+	static function getSuggestedGlobalRepositoryPath():String {
+		if (IS_WINDOWS)
+			return getWindowsDefaultGlobalRepositoryPath();
+
+		return if (FileSystem.exists("/usr/share/haxe")) // for Debian
+			'/usr/share/haxe/$REPONAME'
+		else if (Sys.systemName() == "Mac") // for newer OSX, where /usr/lib is not writable
+			'/usr/local/lib/haxe/$REPONAME'
+		else '/usr/lib/haxe/$REPONAME'; // for other unixes
 	}
 
 	/**
@@ -170,7 +193,7 @@ class RepoManager {
 		final haxepath = Sys.getEnv("HAXEPATH");
 		if (haxepath != null)
 			return Path.join([haxepath.trim(), REPONAME]);
-		return Path.join([Path.directory(getConfigFile()), "haxelib"]);
+		return Path.join([Path.directory(getConfigFilePath()), "haxelib"]);
 	}
 
 }

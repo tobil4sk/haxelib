@@ -476,7 +476,7 @@ class Main {
 			case "Blocked":
 				"Http connection timeout. Try running 'haxelib --no-timeout <command>' to disable timeout";
 			case "std@get_cwd":
-				"Error: Current working directory is unavailable";
+				"Current working directory is unavailable";
 			case _:
 				null;
 		}
@@ -1042,18 +1042,14 @@ class Main {
 		}
 	}
 
-
 	function getRepository():String {
-		if (!settings.global)
-			return RepoManager.findRepository(Sys.getCwd());
-		else
+		if (settings.global)
 			return RepoManager.getGlobalRepository();
+		return RepoManager.findRepository(Sys.getCwd());
 	}
 
 	function setup() {
-		var rep =
-			try RepoManager.getGlobalRepositoryPath()
-			catch (_:Dynamic) RepoManager.getSuggestedGlobalRepositoryPath();
+		var rep = RepoManager.suggestGlobalRepositoryPath();
 
 		final prompt = 'Please enter haxelib repository path with write access\n'
 				+ 'Hit enter for default ($rep)\n'
@@ -1681,7 +1677,7 @@ class Main {
 		} catch (e:haxe.Exception) {
 			if (priorityFlags.contains(Debug))
 				rethrow(e);
-			Sys.stderr().writeString('${e.message}\n');
+			Sys.stderr().writeString('Error: ${e.message}\n');
 			Sys.exit(1);
 			return;
 		};
