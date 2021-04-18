@@ -68,9 +68,15 @@ class RepoManager {
 		return Path.addTrailingSlash(rep);
 	}
 
-	/** Sets `path` as the global haxelib repository in the user's haxelib config file. **/
+	/**
+		Sets `path` as the global haxelib repository in the user's haxelib config file.
+
+		If `path` does not exist already, it is created.
+	 **/
 	public static function saveSetup(path:String):Void {
 		final configFile = getConfigFilePath();
+
+		path = FileSystem.absolutePath(path);
 
 		if (isSamePath(path, configFile))
 			throw new RepoException('Cannot use $path because it is reserved for config file');
