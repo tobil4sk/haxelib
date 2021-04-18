@@ -86,6 +86,15 @@ class RepoManager {
 	}
 
 	/**
+		Deletes the user's current haxelib setup,
+		resetting their global directory path.
+	**/
+	public static function clearSetup():Void {
+		final configFile = getConfigFilePath();
+		FileSystem.deleteFile(configFile);
+	}
+
+	/**
 		Returns the previous global repository path if a valid one had been
 		properly set up, otherwise returns the default path for the
 		current operating system.
