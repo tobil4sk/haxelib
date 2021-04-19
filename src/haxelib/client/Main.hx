@@ -349,7 +349,6 @@ class Main {
 	}
 
 	function version() {
-		final params = argsIterator.next();
 		print(VERSION_LONG);
 	}
 
