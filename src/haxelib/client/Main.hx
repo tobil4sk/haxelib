@@ -1663,8 +1663,7 @@ class Main {
 				Sys.exit(1);
 				return;
 			} catch (e:InvalidCommand) {
-				if (e.message != "")
-					Sys.stderr().writeString('${e.message}\n');
+				Sys.stderr().writeString('${e.message}\n');
 				usage();
 				Sys.exit(1);
 				return;

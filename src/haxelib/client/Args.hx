@@ -223,7 +223,7 @@ class Args {
 
 		final commandStr = mainArgs.shift();
 		if (commandStr == null)
-			throw new InvalidCommand("");
+			throw new InvalidCommand("No command specified");
 
 		final command = Command.ofString(commandStr);
 		if(command == null)
