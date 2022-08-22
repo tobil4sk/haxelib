@@ -111,6 +111,10 @@ class Repo implements SiteApi {
 	}
 
 	public function register( name : String, pass : String, mail : String, fullname : String ) : Void {
+		throw "Outdated client\n\n"
+			+ "Due to security improvements to Haxelib, account registrations from old haxelib clients\n"
+			+ "have been disabled. Please try again later for instructions on how to update your client.";
+
 		if( name.length < 3 )
 			throw "User name must be at least 3 characters";
 		if( !Data.alphanum.match(name) )
@@ -145,6 +149,10 @@ class Repo implements SiteApi {
 	}
 
 	public function checkPassword( user : String, pass : String ) : Bool {
+		// this is used only when submitting
+		throw "Outdated client\n\n"
+			+ "Due to security improvements to Haxelib's api, library submissions from old Haxelib clients\n"
+			+ "have been disabled. Please try again later for instructions on how to update your client.";
 		var u = User.manager.search({ name : user }).first();
 		return u != null && u.pass == pass;
 	}
@@ -154,6 +162,9 @@ class Repo implements SiteApi {
 	}
 
 	public function processSubmit( id : String, user : String, pass : String ) : String {
+		throw "Outdated client\n\n"
+			+ "Due to security improvements to Haxelib's api, library submissions from old Haxelib clients\n"
+			+ "have been disabled. Please try again later for instructions on how to update your client.";
 		var tmpFile = Path.join([TMP_DIR_NAME, Std.parseInt(id)+".tmp"]);
 		return FileStorage.instance.readFile(
 			tmpFile,
