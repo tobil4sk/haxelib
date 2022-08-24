@@ -425,8 +425,6 @@ class Installer {
 			// with version locking we'll be able to be smarter with this
 			updateVcs(library, vcsId, vcs);
 
-			scope.setVcsVersion(library, vcsId);
-
 			handleDependenciesVcs(library, vcsId, null);
 			// we dont know if a subdirectory was given anymore
 			return;
