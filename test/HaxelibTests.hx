@@ -30,6 +30,7 @@ class HaxelibTests {
 	}
 
 	static public function deleteDirectory(dir:String) {
+		// TODO: Add some safety check to ensure we are only deleting directories within the project
 		if (!FileSystem.exists(dir)) return;
 		final exitCode = switch (Sys.systemName()) {
 			case "Windows":

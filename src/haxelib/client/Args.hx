@@ -101,7 +101,7 @@ class UsageData {
 	@:optional
 	final parameter:Null<String>;
 	@:optional
-	final category:CommandCategory;
+	final category:Null<CommandCategory>;
 }
 
 class Args {

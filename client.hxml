@@ -2,3 +2,4 @@
 -cp hx3compat/std
 -neko run.n
 -main haxelib.client.Main
+#--macro nullSafety('haxelib.api')

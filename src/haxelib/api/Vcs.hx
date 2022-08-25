@@ -24,6 +24,7 @@ package haxelib.api;
 import sys.FileSystem;
 import haxelib.VersionData.VcsID;
 using haxelib.api.Vcs;
+using StringTools;
 
 interface IVcs {
 	/** The name of the vcs system. **/
@@ -61,6 +62,12 @@ interface IVcs {
 		Returns `true` if update successful.
 	**/
 	function update(?confirm:()->Bool, ?debugLog:(msg:String)->Void, ?summaryLog:(msg:String)->Void):Bool;
+
+	function getRef(?debugLog:(msg:String) -> Void):String;
+
+	function getOriginUrl(?debugLog:(msg:String) -> Void):String;
+
+	function getBranchName(?debugLog:(msg:String) -> Void):Null<String>;
 }
 
 /** Enum representing errors that can be thrown during a vcs operation. **/
@@ -198,9 +205,6 @@ abstract class Vcs implements IVcs {
 		return ret;
 	}
 
-	public abstract function clone(libPath:String, vcsPath:String, ?branch:String, ?version:String, ?debugLog:(msg:String)->Void):Void;
-
-	public abstract function update(?confirm:() -> Bool, ?debugLog:(msg:String) -> Void, ?summaryLog:(msg:String) -> Void):Bool;
 }
 
 /** Class wrapping `git` operations. **/
@@ -316,6 +320,21 @@ class Git extends Vcs {
 		// return prev. cwd:
 		Sys.setCwd(oldCwd);
 	}
+
+	public function getRef(?debugLog:(msg:String) -> Void):String {
+		return run(["rev-parse", "--verify", "HEAD"], debugLog, true).out.trim();
+	}
+
+	public function getOriginUrl(?debugLog:(msg:String) -> Void):String {
+		return run(["ls-remote", "--get-url", "origin"], debugLog, true).out.trim();
+	}
+
+	public function getBranchName(?debugLog:(msg:String) -> Void):Null<String> {
+		final ret = run(["symbolic-ref", "--short", "HEAD"], debugLog, true);
+		if (ret.code != 0)
+			return null;
+		return ret.out.trim();
+	}
 }
 
 /** Class wrapping `hg` operations. **/
@@ -388,5 +407,21 @@ class Mercurial extends Vcs {
 
 		if (run(vcsArgs, debugLog).code != 0)
 			throw VcsError.CantCloneRepo(this, url/*, ret.out*/);
+	}
+
+	public function getRef(?debugLog:(msg:String) -> Void):String {
+		final out = run(["id", "-i"], true).out.trim();
+		// if the hash ends with +, there are edits
+		if (StringTools.endsWith(out, "+"))
+			return out.substr(0, out.length - 2);
+		return out;
+	}
+
+	public function getOriginUrl(?debugLog:(msg:String) -> Void):String {
+		return run(["paths", "default"], true).out.trim();
+	}
+
+	public function getBranchName(?debugLog:(msg:String) -> Void):Null<String> {
+		return run(["id", "-b"], true).out.trim();
 	}
 }

@@ -113,7 +113,7 @@ macro function buildArgType():Array<Field> {
 	addStaticField(fields, "ofString", FFun({
 			args: [{name: "str", type: macro: String}],
 			expr: hasAliases ? ofStringWithAliases : ofString,
-			ret: macro:$abstractPath
+			ret: macro:Null<$abstractPath>
 		}),
 		'Returns `str` as an instance of `${abstractType.name}`. If it is invalid, returns `null`.', true
 	);

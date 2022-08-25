@@ -29,7 +29,7 @@ import sys.io.File;
 
 import haxelib.api.*;
 import haxelib.VersionData.VcsID;
-import haxelib.api.LibraryData;
+import haxelib.api.LibraryData.Version;
 
 import haxelib.client.Args;
 import haxelib.Util.rethrow;
@@ -434,9 +434,16 @@ class Main {
 	}
 
 	function install() {
-		final toInstall = getArgument("Library name or hxml file");
 		final scope = getScope();
 		final installer = setupAndGetInstaller(scope);
+
+		final given:Null<String> = argsIterator.next();
+		if (given == null && scope.isLocal) {
+			installer.installFromScope();
+			return;
+		}
+
+		final toInstall = given ?? getArgument("Library name or hxml file");
 
 		// No library given, install libraries listed in *.hxml in given directory
 		if (toInstall == "all") {

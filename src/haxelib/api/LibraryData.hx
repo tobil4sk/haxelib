@@ -43,38 +43,72 @@ enum abstract Dev(String) to String {
 /** Like `Version`, but also has the possible value of `dev`. **/
 abstract VersionOrDev(String) from VcsID from SemVer from Version from Dev to String {}
 
-/** Interface which all types of library data implement. **/
-interface ILibraryData {
-	final version:VersionOrDev;
-	final dependencies:Array<ProjectName>;
-}
-
 /** Data for a library installed from the haxelib server. **/
-@:structInit
-class LibraryData implements ILibraryData {
-	public final version:SemVer;
-	public final dependencies:Array<ProjectName>;
-}
 
-/** Data for a library located in a local development path. **/
-@:structInit
-class DevLibraryData implements ILibraryData {
-	public final version:Dev;
-	public final dependencies:Array<ProjectName>;
-	public final path:String;
+typedef LibraryData = {
+	final version:SemVer;
 }
 
 /** Data for a library installed via vcs. **/
-@:structInit
-class VcsLibraryData implements ILibraryData {
-	public final version:VcsID;
-	public final dependencies:Array<ProjectName>;
+typedef VcsLibraryData = {
+	final version:VcsID;
 	/** Reproducible vcs information **/
-	public final vcs:VcsData;
+	final vcs:VcsData;
+}
+
+/** Data for a library located in a local development path. **/
+typedef DevLibraryData = {
+	final version:Dev;
+	final path:String;
 }
 
 private final hashRegex = ~/^([a-f0-9]{7,40})$/;
 function isCommitHash(str:String)
 	return hashRegex.match(str);
 
-typedef LockFormat = DynamicAccess<LibraryData>;
+
+function matchLibraryData(version:Version, libData:LibraryData):Bool {
+	// check that version matches
+	return cast(version, VersionOrDev) == libData.version;
+}
+
+@:forward
+abstract LockFormat(Map<ProjectName, VersionData>) {
+	inline function new()
+		this = [];
+
+	@:from
+	public static function fromDynamic(object:Dynamic):LockFormat {
+		final lock = new LockFormat();
+
+		for (field in Reflect.fields(object)) {
+			final name = ProjectName.ofString(field);
+			final dataObject = Reflect.field(object, field);
+			final versionString = Reflect.field(dataObject, "version");
+			final data:VersionData = switch versionString {
+				case v if (SemVer.isValid(v)):
+					Haxelib(SemVer.ofString(v));
+				case v if (VcsID.isValid(v)):
+					VcsInstall(VcsID.ofString(v), {
+						url: dataObject.vcs.url,
+						ref: dataObject.vcs.ref,
+						tag: dataObject.vcs.tag,
+						branch: dataObject.vcs.branch,
+						subDir: dataObject.vcs.subDir,
+					});
+				case null: throw 'Library $name has no field `version`';
+				default: throw 'Library $name has invalid `version` value';
+			}
+			lock[name] = data;
+		}
+		return lock;
+	}
+
+	@:op([])
+	public function get(name:ProjectName)
+		return this[name];
+
+	@:op([])
+	public function set(name:ProjectName, data:VersionData)
+		this[name] = data;
+}

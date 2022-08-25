@@ -1,6 +1,1 @@
-{ 
-	"user" : "dbUser", 
-	"pass" : "dbPass", 
-	"host" : "dbHost", 
-	"database" : "haxelib"
-}
+{"host":"localhost","pass":"dbPass","port":3306,"user":"dbUser","database":"haxelib"}

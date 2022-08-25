@@ -1,4 +1,5 @@
 .tmp-earthly-out*
+lib/argon2
 
 # Compiled files
 *.exe

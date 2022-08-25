@@ -14,6 +14,45 @@ typedef InstallationInfo = {
 	final devPath:Null<String>;
 }
 
+// class ResolvedLibrary {
+// 	public final name:ProjectName;
+// 	/** The internal type of the library **/
+// 	public final version:SemVer;
+// 	public final path:String;
+// 	public var dependencies(get, null):Map<ProjectName, Null<Version>>;
+// 	public function get_dependencies(){
+// 		return dependencies.copy();
+// 	}
+// 	final type:ResolvedType;
+// 	function new(name:ProjectName, type:ResolvedType, version:SemVer, path:String, dependencies:Map<ProjectName, Null<Version>>){
+// 		this.name = name;
+// 		this.version = version;
+// 		this.path = path;
+// 		this.type = type;
+// 		this.dependencies = dependencies;
+// 	}
+// 	@:allow(haxelib.client.GlobalScope)
+// 	static function fromLock(name:ProjectName, libData:LibraryData, dependencyVersions:Map<ProjectName, Version>):ResolvedLibrary {
+// 		final version:Version = if (libData.vcs != null) libData.vcs.type else libData.version;
+// 		final type = Installed(version);
+// 		return new ResolvedLibrary(name, type, libData.version, libData.path, [for (d in libData.dependencies) d => null]);
+// 	}
+// 	@:allow(haxelib.client.GlobalScope)
+// 	static function fromDev(name:ProjectName, version:SemVer, path:String, dependencies:Map<ProjectName, Version>) {
+// 		return new ResolvedLibrary(name, Dev, version, path, dependencies);
+// 	}
+// 	public function getVersionString():String {
+// 		return switch (type) {
+// 			case Installed(ver):
+// 				ver;
+// 			case Dev:
+// 				"dev";
+// 		}
+// 	}
+// }
+
+class ScopeException extends haxe.Exception {}
+
 /**
 	Returns scope for directory `dir`. If `dir` is omitted, uses the current
 	working directory.
@@ -22,10 +61,11 @@ typedef InstallationInfo = {
 	otherwise to the global one.
 **/
 function getScope(?dir:String):Scope {
-	if (dir == null)
-		dir = Sys.getCwd();
-	@:privateAccess
-	return new GlobalScope(Repository.get(dir));
+	dir = dir ?? Sys.getCwd();
+	final localScopeDirectory = LocalScope.findLocalScope(dir);
+	if (localScopeDirectory == null)
+		return @:privateAccess new GlobalScope(Repository.get(dir));
+	return @:privateAccess new LocalScope(Repository.get(localScopeDirectory), localScopeDirectory);
 }
 
 /** Returns the global scope. **/
@@ -40,10 +80,11 @@ function getGlobalScope(?dir:String):GlobalScope {
 	If `dir` is omitted, uses the current working directory.
 **/
 function getScopeForRepository(repository:Repository, ?dir:String):Scope {
-	if (dir == null)
-		dir = Sys.getCwd();
-	@:privateAccess
-	return new GlobalScope(repository);
+	dir = dir ?? Sys.getCwd();
+	final localScopeDirectory = LocalScope.findLocalScope(dir);
+	if (localScopeDirectory == null)
+		return @:privateAccess new GlobalScope(repository);
+	return @:privateAccess new LocalScope(repository, localScopeDirectory);
 }
 
 /**
@@ -66,6 +107,12 @@ abstract class Scope {
 
 		overrides = loadOverrides();
 	}
+
+	/* TODO: This method should maybe check global overrides file in the future,
+		and give a warning if a global version of the library will still be available
+		after the local one is removed.
+	*/
+	//public abstract function remove(library:ProjectName, ?version:Version):Void;
 
 	/**
 		Runs the script for `library` with `callData`.
@@ -113,8 +160,17 @@ abstract class Scope {
 	 **/
 	public abstract function getArrayOfLibraryInfo(?filter:String):Array<InstallationInfo>;
 
-	/** Returns the path to the source directory of `version` of `library`. **/
+	/**
+		Returns the path to the source directory of `version` of `library`.
+
+		If `version` is not specified, the scope's current set version is used.
+
+		If the library does not exist in the scope or is not installed, an error is thrown.
+
+	**/
 	public abstract function getPath(library:ProjectName, ?version:Version):String;
+
+	//public abstract function getArgs(library:ProjectName, ?version:Version):Array<String>;
 
 	/** Returns the required build arguments for `version` of `library` as an hxml string. **/
 	public abstract function getArgsAsHxml(library:ProjectName, ?version:Version):String;
@@ -127,9 +183,17 @@ abstract class Scope {
 
 	abstract function resolveCompiler():LibraryData;
 
+	/**
+		Returns the full version data for `library`.
+	**/
+	public abstract function resolve(library:ProjectName):VersionData;
+
+	//function resolve(library:ProjectName, version:Version):LibraryData {}
+
 	// TODO: placeholders until https://github.com/HaxeFoundation/haxe/wiki/Haxe-haxec-haxelib-plan
 	static function loadOverrides():LockFormat {
-		return {};
+		//return {};
+		return @:privateAccess new LockFormat();
 	}
 
 }

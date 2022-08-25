@@ -218,6 +218,20 @@ class Installer {
 		vcsBranchesByLibraryName.clear();
 	}
 
+	/**
+		Installs all libraries from the current scope.
+
+		Only works in a local scope. If the current scope is global, an error is thrown.
+	**/
+	public function installFromScope() {
+		if (!scope.isLocal)
+			throw "Cannot install libraries from a global scope";
+
+		for (library in scope.getLibraryNames()) {
+			installFromInstallData(library, scope.resolve(library));
+		}
+	}
+
 	/** Installs libraries from the `haxelib.json` file at `path`. **/
 	public function installFromHaxelibJson(path:String) {
 		final path = FileSystem.fullPath(path);
@@ -351,14 +365,8 @@ class Installer {
 
 		library = getVcsLibraryName(library, id, vcsData.subDir);
 
-		scope.setVcsVersion(library, id, vcsData);
+		setVcsVersion(library, id, vcsData);
 
-		if (vcsData.subDir != null) {
-			final path = scope.getPath(library);
-			userInterface.log('  Development directory set to $path');
-		} else {
-			userInterface.log('  Current version is now $id');
-		}
 		userInterface.log("Done");
 
 		handleDependenciesVcs(library, id, vcsData.subDir);
@@ -419,9 +427,7 @@ class Installer {
 
 		final vcsId = try VcsID.ofString(current) catch (_) null;
 		if (vcsId != null) {
-			final vcs = Vcs.get(vcsId);
-			if (vcs == null || !vcs.available)
-				throw 'Could not use $vcsId, please make sure it is installed and available in your PATH.';
+			final vcs = getVcs(vcsId);
 			// with version locking we'll be able to be smarter with this
 			updateVcs(library, vcsId, vcs);
 
@@ -471,7 +477,7 @@ class Installer {
 		then `givenName` is returned instead
 	 **/
 	function getVcsLibraryName(givenName:ProjectName, id:VcsID, subDir:Null<String>):ProjectName {
-		final jsonPath = scope.getPath(givenName, id) + (if (subDir != null) subDir else "") + Data.JSON;
+		final jsonPath = repository.getVersionPath(givenName, id) + (if (subDir != null) subDir else "") + Data.JSON;
 		if (!FileSystem.exists(jsonPath))
 			return givenName;
 		final internalName = Data.readData(File.getContent(jsonPath), NoCheck).name;
@@ -570,16 +576,40 @@ class Installer {
 	function setVersionAndLog(library:ProjectName, installData:VersionData) {
 		switch installData {
 			case VcsInstall(version, vcsData):
-				scope.setVcsVersion(library, version, vcsData);
-				if (vcsData.subDir == null){
-					userInterface.log('  Current version is now $version');
-				} else {
-					final path = scope.getPath(library);
-					userInterface.log('  Development directory set to $path');
-				}
+				setVcsVersion(library, version, vcsData);
 			case Haxelib(version):
 				scope.setVersion(library, version);
 				userInterface.log('  Current version is now $version');
+		}
+	}
+
+	/**
+		Retrieves fully reproducible vcs data if necessary,
+		and then uses it to lock down the current version.
+	**/
+	function setVcsVersion(library:ProjectName, version:VcsID, data:VcsData) {
+		// we need to get fully reproducible data before setting a version in a local scope
+		if (scope.isLocal && !data.isReproducible()) {
+			final vcs = getVcs(version);
+			final libPath = repository.getVersionPath(library, version);
+
+			data = FsUtils.runInDirectory(libPath, function():VcsData {
+				return {
+					subDir: data.subDir,
+					branch: data.branch,
+					tag: data.tag,
+					url: data.url ?? vcs.getOriginUrl(userInterface.log.bind(_, Debug)),
+					ref: data.ref ?? vcs.getRef(userInterface.log.bind(_, Debug))
+				};
+			});
+		}
+
+		scope.setVcsVersion(library, version, data);
+		if (data.subDir == null) {
+			userInterface.log('  Current version is now $version');
+		} else {
+			final path = scope.getPath(library);
+			userInterface.log('  Development directory set to $path');
 		}
 	}
 
@@ -748,10 +778,15 @@ class Installer {
 		userInterface.logInstallationProgress('Done installing $library $version', total, total);
 	}
 
-	function installVcs(library:ProjectName, id:VcsID, vcsData:VcsData) {
+	static function getVcs(id:VcsID) {
 		final vcs = Vcs.get(id);
 		if (vcs == null || !vcs.available)
 			throw 'Could not use $id, please make sure it is installed and available in your PATH.';
+		return vcs;
+	}
+
+	function installVcs(library:ProjectName, id:VcsID, vcsData:VcsData) {
+		final vcs = getVcs(id);
 
 		final libPath = repository.getVersionPath(library, id);
 
