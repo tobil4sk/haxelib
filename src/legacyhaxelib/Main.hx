@@ -28,7 +28,7 @@ enum Answer {
 	Always;
 }
 
-class SiteProxy extends legacyhaxelib.Remoting_SiteApi {
+class SiteProxy extends haxe.remoting.Proxy<haxelib.SiteApi> {
 }
 
 class Progress extends haxe.io.Output {
